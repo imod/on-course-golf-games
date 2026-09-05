@@ -30,11 +30,17 @@ module ApiClient {
 
     //! Reads the API host configured from the phone (Settings > "API base
     //! URL"). Never hardcoded, never typed on the watch. Returns null if
-    //! it hasn't been set yet.
+    //! it hasn't been set yet. A trailing slash is stripped so a value
+    //! like "https://example.com/" doesn't double up with the leading
+    //! slash on every request path and produce a 404.
     function baseUrl() as String or Null {
         var value = Properties.getValue("apiBaseUrl");
         if (value instanceof String && value.length() > 0) {
-            return value;
+            var trimmed = value as String;
+            if ((trimmed.substring(trimmed.length() - 1, trimmed.length()) as String).equals("/")) {
+                trimmed = trimmed.substring(0, trimmed.length() - 1) as String;
+            }
+            return trimmed;
         }
         return null;
     }
