@@ -2,8 +2,9 @@
 
 A Connect IQ watch-app scaffold for entering side-game results (nearest to the
 pin, hole winner, fewest putts) from the wrist. This is the toolchain-proof
-scaffold: a hello-world view and a smoke test, confirmed to build, unit-test,
-and run in the simulator.
+scaffold: a hello-world view and a smoke test. The build, the unit-test build,
+and the test harness itself are proven with captured evidence. The view
+rendering is not — see "Run in the simulator" below.
 
 ## Environment
 
@@ -12,7 +13,10 @@ and run in the simulator.
   device installed in this SDK)
 - Developer key: `~/.Garmin/developer_key.der`
 - `minApiLevel="5.0.0"` in `manifest.xml` (SDK 9.2.0's compiler accepted this
-  without complaint for `fenix847mm`)
+  without complaint for `fenix847mm`, but this was **not** checked against an
+  authoritative device-to-API-level table — none was found in the SDK docs.
+  If a later task needs an API feature near this floor, verify its
+  availability at 5.0.0 rather than assuming it's covered.)
 - Launcher icon size for `fenix847mm`: 65x65 px (from the SDK's device
   reference page for this device — `doc/docs/Device_Reference/fenix847mm.html`)
 
@@ -79,8 +83,18 @@ With the simulator running (see above):
 "$SDK/bin/monkeydo" bin/golfgames.prg fenix847mm
 ```
 
-This pushes and launches the non-test build. It renders a single view with
-the label "Golf Games" centered on the round face.
+This pushes and launches the non-test build. **What this actually proves, and
+what it doesn't:** the `monkeydo` process connects to the simulator and stays
+alive with no crash or exception — that's real evidence the signed `.prg`
+installs and starts. It is **not** evidence that `HelloView` renders. No
+simulator log or exception trace was captured for this run, and the unit-test
+run (which *does* produce captured, verifiable output) never touches
+`HelloView` or the layout resource — it's a different code path entirely.
+Nobody has visually confirmed the "Golf Games" label actually appears on
+screen. Do that 10-second check on a real desktop before relying on this view
+rendering correctly; it closes a real, currently-open gap, not a
+belt-and-braces extra. Every later Phase B view task inherits this same
+unverified-rendering limitation until someone does that check.
 
 ## Things that tripped us up
 
@@ -108,13 +122,14 @@ the label "Golf Games" centered on the round face.
   shape came from `doc/docs/Core_Topics/Unit_Testing.html`, not from
   `samples/`.
 - **Visually confirming the rendered view from this session wasn't possible**
-  — the simulator process runs, and `monkeydo` (both for the plain launch and
-  for `-t` test runs) connects to it and returns real results with no
-  exceptions, which is solid functional proof the app is running correctly on
-  device. But this coding environment's screen capture doesn't show the
-  actual GUI windows (a sandboxing quirk, not a toolchain problem), so nobody
-  visually inspected the rendered "Golf Games" label. Worth a 10-second manual
-  check next time someone is at a real desktop.
+  — this coding environment's screen capture doesn't show the actual GUI
+  windows (a sandboxing quirk, not a toolchain problem: a freshly-launched
+  simulator still reported zero AXWindows to System Events). `monkeydo`
+  connecting and staying alive without a crash only proves the signed `.prg`
+  installs and starts; it says nothing about whether `HelloView.onLayout`
+  resolved the layout or whether anything actually appears on screen. Don't
+  read "the app runs" as "the view renders" — see "Run in the simulator"
+  above for what's actually unverified.
 
 ## Project layout
 

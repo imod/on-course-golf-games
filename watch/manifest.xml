@@ -1,4 +1,8 @@
 <iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <!-- minApiLevel: compiler-accepted for fenix847mm on SDK 9.2.0, but not
+         checked against an authoritative device-to-API-level table (none
+         found in the SDK docs). If a later task needs an API feature near
+         this floor, verify its availability at 5.0.0 rather than assuming. -->
     <iq:application id="00F61D251B814B65B891298C919C9508" type="watch-app" name="@Strings.AppName" entry="GolfGamesApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="5.0.0">
 
         <iq:products>
@@ -13,8 +17,7 @@
             <iq:language>eng</iq:language>
         </iq:languages>
 
-        <iq:barrels>
-        </iq:barrels>
+        <iq:barrels/>
 
     </iq:application>
 </iq:manifest>
