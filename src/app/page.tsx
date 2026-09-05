@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { listRounds } from '@/server/rounds'
 import { ScoreGrid } from '@/components/ScoreGrid'
+import { buttonStyle } from '@/components/Button'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,14 +27,9 @@ export default async function Home() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: 56,
           margin: '22px 0',
-          background: 'var(--ink)',
-          color: 'var(--paper)',
-          borderRadius: 6,
-          fontSize: 18,
-          fontWeight: 500,
           textDecoration: 'none',
+          ...buttonStyle('primary'),
         }}
       >
         New round
