@@ -179,8 +179,11 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
                 >
                   <span style={{ fontSize: 17, fontWeight: 500 }}>{challenge.name}</span>
                   <span style={{ display: 'block', fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>
+                    {/* No client can enter a tie today: the live round screen
+                        and the watch API both send one player per rank. The
+                        label is left off rather than advertising something
+                        that is refused at entry. */}
                     {challenge.points.join(' · ')}
-                    {challenge.allowTies ? ' · ties allowed' : ''}
                   </span>
                 </button>
 
