@@ -152,3 +152,133 @@ function resultQueueBoundedDropsOldestNotNewest(logger as Test.Logger) as Boolea
     logger.debug("newest = " + newest.get("hole"));
     return (newest.get("hole") as Number) == total;
 }
+
+//! At exactly MAX_SIZE, nothing is dropped — the bound only kicks in once
+//! MAX_SIZE is exceeded, not at it.
+(:test)
+function resultQueueAtExactlyMaxSizeDropsNothing(logger as Test.Logger) as Boolean {
+    resetResultQueueForTest();
+
+    for (var hole = 1; hole <= ResultQueue.MAX_SIZE; hole += 1) {
+        ResultQueue.enqueue(makeEntry("ABCD", "hole-winner", hole));
+    }
+
+    if (ResultQueue.size() != ResultQueue.MAX_SIZE) {
+        logger.debug("size = " + ResultQueue.size());
+        return false;
+    }
+
+    // The oldest entry (hole 1) must still be the one at the front — it
+    // was never dropped.
+    var oldest = ResultQueue.peek() as Dictionary;
+    logger.debug("oldest = " + oldest.get("hole"));
+    return (oldest.get("hole") as Number) == 1;
+}
+
+//! enqueue() must not store the caller's dictionary by reference, and
+//! peek() must not hand back the dictionary living in the queue: mutating
+//! either copy afterward must not change what the queue holds.
+(:test)
+function resultQueueCopiesOnTheWayInAndOut(logger as Test.Logger) as Boolean {
+    resetResultQueueForTest();
+
+    var original = makeEntry("ABCD", "hole-winner", 3);
+    ResultQueue.enqueue(original);
+
+    // Mutate the dictionary already passed to enqueue().
+    original.put("hole", 999);
+    (original.get("ranks") as Array<Object>).add("intruder");
+
+    var firstPeek = ResultQueue.peek() as Dictionary;
+    if ((firstPeek.get("hole") as Number) != 3) {
+        logger.debug("hole after mutating the enqueued dict = " + firstPeek.get("hole"));
+        return false;
+    }
+    if ((firstPeek.get("ranks") as Array<Object>).size() != 2) {
+        logger.debug("ranks after mutating the enqueued dict = " + firstPeek.get("ranks"));
+        return false;
+    }
+
+    // Mutate what peek() just returned.
+    firstPeek.put("hole", 111);
+    (firstPeek.get("ranks") as Array<Object>).add("intruder2");
+
+    var secondPeek = ResultQueue.peek() as Dictionary;
+    if ((secondPeek.get("hole") as Number) != 3) {
+        logger.debug("hole after mutating a peeked dict = " + secondPeek.get("hole"));
+        return false;
+    }
+    return (secondPeek.get("ranks") as Array<Object>).size() == 2;
+}
+
+//! enqueue() must leave the in-memory queue exactly as it was before the
+//! call, not holding an entry that storage never actually accepted.
+//!
+//! The failure is forced through `ResultQueue._forceSaveFailureForTest`
+//! rather than by actually exhausting the Object Store: a genuinely
+//! oversized entry was tried first, and on this device it surfaced as a
+//! fatal, uncatchable Out-Of-Memory error rather than the catchable
+//! Lang.StorageFullException it was meant to stand in for — not something
+//! a unit test can rely on. This module-variable seam is what the task
+//! brief calls "a monkey-patched module variable".
+(:test)
+function resultQueueFailedSaveDoesNotCorruptInMemoryState(logger as Test.Logger) as Boolean {
+    resetResultQueueForTest();
+
+    var kept = makeEntry("ABCD", "hole-winner", 1);
+    ResultQueue.enqueue(kept);
+
+    ResultQueue._forceSaveFailureForTest = true;
+    var threw = false;
+    try {
+        ResultQueue.enqueue(makeEntry("HUGE", "nearest-pin", 2));
+    } catch (ex instanceof ResultQueue.ForcedSaveFailure) {
+        threw = true;
+    } finally {
+        ResultQueue._forceSaveFailureForTest = false;
+    }
+
+    if (!threw) {
+        logger.debug("expected enqueue to fail while save() is forced to throw");
+        return false;
+    }
+
+    if (ResultQueue.size() != 1) {
+        logger.debug("size after failed save = " + ResultQueue.size());
+        return false;
+    }
+    var survivor = ResultQueue.peek() as Dictionary;
+    return entriesEqual(survivor, kept);
+}
+
+//! Same failure handling, but for dropFirst(): a failed save() must leave
+//! the queue exactly as it was before the drop.
+(:test)
+function resultQueueFailedSaveDoesNotCorruptDropFirst(logger as Test.Logger) as Boolean {
+    resetResultQueueForTest();
+
+    ResultQueue.enqueue(makeEntry("ABCD", "hole-winner", 1));
+    ResultQueue.enqueue(makeEntry("ABCD", "hole-winner", 2));
+
+    ResultQueue._forceSaveFailureForTest = true;
+    var threw = false;
+    try {
+        ResultQueue.dropFirst();
+    } catch (ex instanceof ResultQueue.ForcedSaveFailure) {
+        threw = true;
+    } finally {
+        ResultQueue._forceSaveFailureForTest = false;
+    }
+
+    if (!threw) {
+        logger.debug("expected dropFirst to fail while save() is forced to throw");
+        return false;
+    }
+
+    if (ResultQueue.size() != 2) {
+        logger.debug("size after failed drop = " + ResultQueue.size());
+        return false;
+    }
+    var oldest = ResultQueue.peek() as Dictionary;
+    return (oldest.get("hole") as Number) == 1;
+}

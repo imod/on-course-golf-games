@@ -53,34 +53,101 @@ module ResultQueue {
         }
     }
 
+    //! Set by a test to make save() fail predictably instead of writing to
+    //! Application.Storage. Always false outside of tests, and not part of
+    //! the module's public interface — genuinely exhausting the Object
+    //! Store to exercise save() failure handling is neither reliable nor
+    //! safe to do from a unit test: on this device it risks a fatal,
+    //! uncatchable Out-Of-Memory error instead of the catchable
+    //! `Lang.StorageFullException` it's meant to stand in for.
+    var _forceSaveFailureForTest as Boolean = false;
+
+    //! Thrown by save() when `_forceSaveFailureForTest` is set, standing in
+    //! for a real `Application.Storage` failure such as
+    //! `Lang.StorageFullException`.
+    class ForcedSaveFailure extends Lang.Exception {
+        function initialize() {
+            Exception.initialize();
+            self.mMessage = "forced save failure for test";
+        }
+    }
+
     //! Writes the in-memory queue to `Application.Storage`.
     function save() as Void {
+        if (_forceSaveFailureForTest) {
+            throw new ForcedSaveFailure();
+        }
         Storage.setValue(STORAGE_KEY, _queue as Array<Dictionary>);
     }
 
-    //! Appends `entry` and persists immediately. If this pushes the queue
-    //! past `MAX_SIZE`, the oldest entry (or entries) are dropped — never
-    //! the one just added.
-    function enqueue(entry as Dictionary) as Void {
-        ensureLoaded();
-        var queue = _queue as Array<Dictionary>;
-        queue.add(entry);
-        while (queue.size() > MAX_SIZE) {
-            queue = queue.slice(1, null) as Array<Dictionary>;
-        }
-        _queue = queue;
-        save();
+    //! Deep-enough-copies one entry so neither the caller's dictionary nor
+    //! the internal queue ever alias each other: mutating one must never
+    //! change the other. Mirrors `Ranking.copyGroup`'s reasoning, extended
+    //! to also copy any tie sub-array inside "ranks".
+    function copyEntry(entry as Dictionary) as Dictionary {
+        return {
+            "code" => entry.get("code"),
+            "rc" => entry.get("rc"),
+            "hole" => entry.get("hole"),
+            "ranks" => copyRanks(entry.get("ranks") as Array<Object>)
+        } as Dictionary;
     }
 
-    //! Returns the oldest entry without removing it, or null if the queue
-    //! is empty.
+    //! Shallow-copies `ranks`, and also copies any element that is itself
+    //! an Array (a tie), so no array inside the copy is shared with the
+    //! original.
+    function copyRanks(ranks as Array<Object>) as Array<Object> {
+        var result = [] as Array<Object>;
+        for (var i = 0; i < ranks.size(); i += 1) {
+            var item = ranks[i];
+            if (item instanceof Array) {
+                result.add((item as Array<String>).slice(0, null) as Array<String>);
+            } else {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    //! Appends a copy of `entry` and persists immediately. If this pushes
+    //! the queue past `MAX_SIZE`, the oldest entry (or entries) are dropped
+    //! — never the one just added.
+    //!
+    //! The in-memory queue is only updated to the new contents once
+    //! `save()` has returned without throwing. If `Storage.setValue` throws
+    //! (for example `Lang.StorageFullException`), `_queue` is left exactly
+    //! as it was before this call and the exception is rethrown — the
+    //! module never reports an entry as queued that storage doesn't
+    //! actually hold, even to a caller that catches the exception and
+    //! continues.
+    function enqueue(entry as Dictionary) as Void {
+        ensureLoaded();
+        var previous = _queue as Array<Dictionary>;
+        var updated = previous.slice(0, null) as Array<Dictionary>;
+        updated.add(copyEntry(entry));
+        while (updated.size() > MAX_SIZE) {
+            updated = updated.slice(1, null) as Array<Dictionary>;
+        }
+        _queue = updated;
+        try {
+            save();
+        } catch (ex) {
+            _queue = previous;
+            throw ex;
+        }
+    }
+
+    //! Returns a copy of the oldest entry without removing it, or null if
+    //! the queue is empty. A copy, not the entry living in the queue, so a
+    //! caller mutating what it gets back cannot corrupt the queue without
+    //! going through enqueue()/save().
     function peek() as Dictionary or Null {
         ensureLoaded();
         var queue = _queue as Array<Dictionary>;
         if (queue.size() == 0) {
             return null;
         }
-        return queue[0];
+        return copyEntry(queue[0]);
     }
 
     //! Number of entries currently queued.
@@ -89,15 +156,23 @@ module ResultQueue {
         return (_queue as Array<Dictionary>).size();
     }
 
-    //! Removes the oldest entry and persists the result. Harmless (a no-op)
-    //! on an empty queue.
+    //! Removes the oldest entry and persists the result. Harmless (a no-op,
+    //! including no write) on an empty queue.
+    //!
+    //! Same failure handling as enqueue(): if save() throws, `_queue` is
+    //! restored to its pre-drop contents before the exception is rethrown.
     function dropFirst() as Void {
         ensureLoaded();
-        var queue = _queue as Array<Dictionary>;
-        if (queue.size() == 0) {
+        var previous = _queue as Array<Dictionary>;
+        if (previous.size() == 0) {
             return;
         }
-        _queue = queue.slice(1, null) as Array<Dictionary>;
-        save();
+        _queue = previous.slice(1, null) as Array<Dictionary>;
+        try {
+            save();
+        } catch (ex) {
+            _queue = previous;
+            throw ex;
+        }
     }
 }
