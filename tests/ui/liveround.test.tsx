@@ -45,6 +45,15 @@ const withSaved: RoundState = {
   ],
 }
 
+/** The same round plus a second, tie-allowing challenge. */
+const tieAllowedRound: RoundState = {
+  ...initial,
+  challenges: [
+    ...initial.challenges,
+    { id: 'c2', name: 'Fewest putts', points: [2, 1], scope: 'per_hole', allowTies: true, holes: null },
+  ],
+}
+
 describe('LiveRound', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -191,6 +200,76 @@ describe('LiveRound', () => {
 
     expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
     expect(screen.getByTestId('save-c1')).toBeDefined()
+  })
+
+  it('ties a player with the previous pick on a second tap', async () => {
+    render(<LiveRound initial={tieAllowedRound} locale="en" />)
+
+    fireEvent.click(screen.getByTestId('cell-c2-p1'))
+    fireEvent.click(screen.getByTestId('cell-c2-p2'))
+    fireEvent.click(screen.getByTestId('cell-c2-p2'))
+
+    expect(screen.getByTestId('cell-c2-p1').textContent).toContain('2')
+    expect(screen.getByTestId('cell-c2-p2').textContent).toContain('2')
+
+    fireEvent.click(screen.getByTestId('save-c2'))
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string)
+    expect(body.placements).toEqual([['p1', 'p2']])
+  })
+
+  it('removes a tied player on a third tap', () => {
+    render(<LiveRound initial={tieAllowedRound} locale="en" />)
+
+    fireEvent.click(screen.getByTestId('cell-c2-p1'))
+    fireEvent.click(screen.getByTestId('cell-c2-p2'))
+    fireEvent.click(screen.getByTestId('cell-c2-p2'))
+    fireEvent.click(screen.getByTestId('cell-c2-p2'))
+
+    expect(screen.getByTestId('cell-c2-p2').textContent).not.toContain('2')
+    expect(screen.getByTestId('cell-c2-p1').textContent).toContain('2')
+  })
+
+  it('removes the sole player in first place on a second tap', () => {
+    render(<LiveRound initial={tieAllowedRound} locale="en" />)
+
+    fireEvent.click(screen.getByTestId('cell-c2-p1'))
+    expect(screen.getByTestId('cell-c2-p1').textContent).toContain('2')
+
+    fireEvent.click(screen.getByTestId('cell-c2-p1'))
+    expect(screen.getByTestId('cell-c2-p1').textContent).not.toContain('2')
+  })
+
+  it('refuses a tie when the challenge does not allow one', () => {
+    render(<LiveRound initial={initial} locale="en" />)
+
+    fireEvent.click(screen.getByTestId('cell-c1-p1'))
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+
+    expect(screen.getByText(/ties are not allowed/i)).toBeDefined()
+    expect(screen.getByTestId('cell-c1-p2').textContent).not.toContain('2')
+    expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
+  })
+
+  it('seeds an existing tie back into the draft', () => {
+    const withTie: RoundState = {
+      ...tieAllowedRound,
+      results: [
+        { roundChallengeId: 'c2', hole: 1, playerId: 'p1', rank: 1, points: 2 },
+        { roundChallengeId: 'c2', hole: 1, playerId: 'p2', rank: 1, points: 2 },
+      ],
+    }
+    render(<LiveRound initial={withTie} locale="en" />)
+
+    // A tap on some other player in the same challenge/hole seeds the draft
+    // from the saved groups; the existing tie between p1 and p2 must survive
+    // that seed rather than being flattened into a strict order.
+    fireEvent.click(screen.getByTestId('cell-c2-p1'))
+
+    expect(screen.getByTestId('cell-c2-p1').textContent).not.toContain('2')
+    expect(screen.getByTestId('cell-c2-p2').textContent).toContain('2')
   })
 })
 

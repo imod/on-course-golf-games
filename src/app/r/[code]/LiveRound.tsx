@@ -9,11 +9,12 @@ import { formatDate, getDict, type Locale } from '@/lib/i18n'
 import type { RoundState } from '@/lib/types'
 
 /**
- * Player ids in the order they will be saved, keyed by challenge and hole.
- * A missing key means "not being edited" — the saved result is shown instead.
- * A present but empty array means "clear this hole", which is a real edit.
+ * Ordered places to be saved, keyed by challenge and hole. Each place is a
+ * list of one or more tied player ids. A missing key means "not being
+ * edited" — the saved result is shown instead. A present but empty array
+ * means "clear this hole", which is a real edit.
  */
-type Draft = Record<string, string[]>
+type Draft = Record<string, string[][]>
 
 export function LiveRound({ initial, locale }: { initial: RoundState; locale: Locale }) {
   const dict = getDict(locale)
@@ -21,6 +22,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
   const [hole, setHole] = useState(1)
   const [draft, setDraft] = useState<Draft>({})
   const [error, setError] = useState<string | null>(null)
+  const [tieError, setTieError] = useState<string | null>(null)
   const [confirmingFinish, setConfirmingFinish] = useState(false)
 
   const refetch = useCallback(async () => {
@@ -73,45 +75,86 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
     return `${challengeId}|${holeFor(challengeId) ?? 'round'}`
   }
 
-  /** The saved order for this challenge and hole, best placement first. */
-  function savedOrder(challengeId: string): string[] {
-    return state.results
-      .filter(
-        (r) => r.roundChallengeId === challengeId && (r.hole ?? null) === holeFor(challengeId),
-      )
-      .sort((a, b) => a.rank - b.rank)
-      .map((r) => r.playerId)
+  /** The saved places for this challenge and hole, grouped by rank so an
+   *  existing tie round-trips instead of being flattened into a strict order. */
+  function savedGroups(challengeId: string): string[][] {
+    const hole = holeFor(challengeId)
+    const byRank = new Map<number, string[]>()
+
+    for (const entry of state.results) {
+      if (entry.roundChallengeId !== challengeId || (entry.hole ?? null) !== hole) continue
+      byRank.set(entry.rank, [...(byRank.get(entry.rank) ?? []), entry.playerId])
+    }
+
+    return [...byRank.entries()].sort(([a], [b]) => a - b).map(([, ids]) => ids)
   }
 
-  /** The order being edited, or null when this challenge/hole is untouched. */
-  function draftOrder(challengeId: string): string[] | null {
+  /** The places being edited, or null when this challenge/hole is untouched. */
+  function draftGroups(challengeId: string): string[][] | null {
     return draft[draftKey(challengeId)] ?? null
   }
 
   function tap(challengeId: string, playerId: string) {
     if (readOnly) return
-    // Seed from what is already saved, so correcting second place cannot
-    // silently wipe first place when the replace is written.
-    const current = draftOrder(challengeId) ?? savedOrder(challengeId)
-    setDraft({
-      ...draft,
-      [draftKey(challengeId)]: current.includes(playerId)
-        ? current.filter((id) => id !== playerId)
-        : [...current, playerId],
-    })
+
+    const challenge = state.challenges.find((c) => c.id === challengeId)!
+    const key = draftKey(challengeId)
+    // Seed from what is already saved, so correcting one player cannot
+    // silently wipe the rest of the hole when the replace is written.
+    const current = draftGroups(challengeId) ?? savedGroups(challengeId)
+    const groupIndex = current.findIndex((group) => group.includes(playerId))
+
+    if (groupIndex === -1) {
+      // Unpicked: appends as a new place.
+      setTieError(null)
+      setDraft({ ...draft, [key]: [...current, [playerId]] })
+      return
+    }
+
+    const group = current[groupIndex]
+
+    if (group.length > 1) {
+      // Already tied: this tap removes just this player from the tie.
+      setTieError(null)
+      const next = current
+        .map((g, i) => (i === groupIndex ? g.filter((id) => id !== playerId) : g))
+        .filter((g) => g.length > 0)
+      setDraft({ ...draft, [key]: next })
+      return
+    }
+
+    if (groupIndex === 0 || !challenge.allowTies) {
+      // Alone in first place, or ties are not allowed for this game: remove.
+      if (!challenge.allowTies && groupIndex > 0) setTieError(challenge.name)
+      else setTieError(null)
+      const next = current.filter((_, i) => i !== groupIndex)
+      setDraft({ ...draft, [key]: next })
+      return
+    }
+
+    // Alone in a later place with ties allowed: join the previous place.
+    setTieError(null)
+    const next = current
+      .map((g, i) => (i === groupIndex - 1 ? [...g, playerId] : g))
+      .filter((_, i) => i !== groupIndex)
+    setDraft({ ...draft, [key]: next })
   }
 
   function pendingPoints(challengeId: string, playerId: string): number | null {
     const challenge = state.challenges.find((c) => c.id === challengeId)!
-    const order = draftOrder(challengeId)
-    if (order === null) return null
-    const index = order.indexOf(playerId)
-    if (index === -1) return null
-    return challenge.points[index] ?? 0
+    const groups = draftGroups(challengeId)
+    if (groups === null) return null
+
+    let rank = 1
+    for (const group of groups) {
+      if (group.includes(playerId)) return challenge.points[rank - 1] ?? 0
+      rank += group.length
+    }
+    return null
   }
 
   async function save(challengeId: string) {
-    const order = draftOrder(challengeId) ?? []
+    const groups = draftGroups(challengeId) ?? []
     setError(null)
 
     try {
@@ -121,7 +164,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
         body: JSON.stringify({
           roundChallengeId: challengeId,
           hole: holeFor(challengeId),
-          placements: order.map((id) => [id]),
+          placements: groups,
         }),
       })
 
@@ -227,7 +270,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {visible.map((challenge) => {
-          const order = draftOrder(challenge.id)
+          const groups = draftGroups(challenge.id)
           return (
             <div key={challenge.id} style={{ border: '1.5px solid var(--ink)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '10px 12px' }}>
@@ -243,7 +286,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
                 }}
               >
                 {state.players.map((player) => {
-                  const editing = draftOrder(challenge.id) !== null
+                  const editing = draftGroups(challenge.id) !== null
                   const pending = pendingPoints(challenge.id, player.id)
                   const saved = savedPoints(challenge.id, player.id)
                   // While editing, the draft is the whole truth for this
@@ -297,7 +340,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
                 })}
               </div>
 
-              {!readOnly && order !== null && (
+              {!readOnly && groups !== null && (
                 <button
                   data-testid={`save-${challenge.id}`}
                   onClick={() => void save(challenge.id)}
@@ -313,10 +356,15 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
                     cursor: 'pointer',
                   }}
                 >
-                  {order.length === 0
+                  {groups.length === 0
                     ? dict.clearChallengeOnHole(challenge.name)
                     : dict.saveChallenge(challenge.name)}
                 </button>
+              )}
+              {tieError === challenge.name && (
+                <div style={{ fontSize: 12, color: 'var(--muted)', padding: '0 12px 10px' }}>
+                  {dict.tiesNotAllowed(challenge.name)}
+                </div>
               )}
             </div>
           )
