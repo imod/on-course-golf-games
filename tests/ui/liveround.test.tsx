@@ -87,4 +87,20 @@ describe('LiveRound', () => {
     expect(screen.queryByTestId('save-c1')).toBeNull()
     expect(screen.getByText(/finished/i)).toBeDefined()
   })
+
+  it('shows an error and keeps the pending selection when save fails at the network level', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    render(<LiveRound initial={initial} />)
+
+    fireEvent.click(screen.getByTestId('cell-c1-p1'))
+    expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
+
+    fireEvent.click(screen.getByTestId('save-c1'))
+
+    await vi.waitFor(() => expect(screen.getByText(/try again/i)).toBeDefined())
+
+    expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
+    expect(screen.getByTestId('save-c1')).toBeDefined()
+  })
 })

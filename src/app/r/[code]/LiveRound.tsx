@@ -16,8 +16,13 @@ export function LiveRound({ initial }: { initial: RoundState }) {
   const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
-    const response = await fetch(`/api/rounds/${state.code}`)
-    if (response.ok) setState((await response.json()) as RoundState)
+    try {
+      const response = await fetch(`/api/rounds/${state.code}`)
+      if (response.ok) setState((await response.json()) as RoundState)
+    } catch {
+      // A dropped connection here just means we miss this refresh; the next
+      // broadcast (or the player's own next action) will retry.
+    }
   }, [state.code])
 
   useEffect(() => {
@@ -78,29 +83,44 @@ export function LiveRound({ initial }: { initial: RoundState }) {
     const order = draft[challengeId] ?? []
     setError(null)
 
-    const response = await fetch(`/api/rounds/${state.code}/results`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        roundChallengeId: challengeId,
-        hole: holeFor(challengeId),
-        placements: order.map((id) => [id]),
-      }),
-    })
+    try {
+      const response = await fetch(`/api/rounds/${state.code}/results`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          roundChallengeId: challengeId,
+          hole: holeFor(challengeId),
+          placements: order.map((id) => [id]),
+        }),
+      })
 
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { error?: string }
-      setError(body.error ?? 'Could not save that.')
-      return
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string }
+        setError(body.error ?? 'Could not save that. Try again.')
+        return
+      }
+
+      setState((await response.json()) as RoundState)
+      setDraft({ ...draft, [challengeId]: [] })
+    } catch {
+      // Network failure: the draft selection is left exactly as it was so
+      // this never looks like a successful save.
+      setError('Could not save that. Try again.')
     }
-
-    setState((await response.json()) as RoundState)
-    setDraft({ ...draft, [challengeId]: [] })
   }
 
   async function finish() {
-    const response = await fetch(`/api/rounds/${state.code}/finish`, { method: 'POST' })
-    if (response.ok) setState((await response.json()) as RoundState)
+    setError(null)
+    try {
+      const response = await fetch(`/api/rounds/${state.code}/finish`, { method: 'POST' })
+      if (response.ok) {
+        setState((await response.json()) as RoundState)
+      } else {
+        setError('Could not finish the round. Try again.')
+      }
+    } catch {
+      setError('Could not finish the round. Try again.')
+    }
   }
 
   return (
