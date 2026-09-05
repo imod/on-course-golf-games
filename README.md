@@ -81,6 +81,17 @@ The Garmin Connect IQ app talks to two endpoints:
 - `GET /api/w/:code` — round configuration, fetched once and cached.
 - `POST /api/w/:code/result` — `{rc, hole, ranks}`, returns `{ok, standings}`.
 
+`ranks` example:
+
+```json
+{ "rc": "c7", "hole": 3, "ranks": ["a1", ["b2", "c3"], "d4"] }
+```
+
+Each element of `ranks` is either a player id (that player took the next
+place) or a nested list of player ids, meaning those players tied for that
+place. A nested element must be non-empty. Above, `a1` is first, `b2` and
+`c3` are tied for second, and `d4` is fourth.
+
 Re-sending the same entry corrects it rather than duplicating it, so the watch
 can retry freely after a dropped connection.
 

@@ -4,6 +4,29 @@ import { readJson, STATUS } from '@/server/http'
 
 type Ctx = { params: Promise<{ code: string }> }
 
+function parseRanks(raw: unknown): string[][] {
+  if (!Array.isArray(raw)) {
+    throw new RoundError('bad_request', 'ranks must be a list of player ids')
+  }
+
+  return raw.map((element) => {
+    if (typeof element === 'string') return [element]
+
+    if (
+      Array.isArray(element) &&
+      element.length > 0 &&
+      element.every((id) => typeof id === 'string')
+    ) {
+      return element as string[]
+    }
+
+    throw new RoundError(
+      'bad_request',
+      'each rank must be a player id, or a non-empty list of ids that tied',
+    )
+  })
+}
+
 /**
  * One request per entry: the watch sends player ids in finishing order and
  * gets the standings back, so it never needs a second call to show them.
@@ -19,9 +42,6 @@ export async function POST(request: Request, { params }: Ctx): Promise<Response>
     const body = parsed as { rc?: unknown; hole?: unknown; ranks?: unknown }
 
     if (typeof body.rc !== 'string') throw new RoundError('bad_request', 'rc is required')
-    if (!Array.isArray(body.ranks) || body.ranks.some((id) => typeof id !== 'string')) {
-      throw new RoundError('bad_request', 'ranks must be a list of player ids')
-    }
     if (body.hole !== null && body.hole !== undefined && typeof body.hole !== 'number') {
       throw new RoundError('bad_request', 'hole must be a number or null')
     }
@@ -29,7 +49,7 @@ export async function POST(request: Request, { params }: Ctx): Promise<Response>
     const state = await submitResult(code, {
       roundChallengeId: body.rc,
       hole: (body.hole as number | null | undefined) ?? null,
-      placements: (body.ranks as string[]).map((id) => [id]),
+      placements: parseRanks(body.ranks),
       device: 'watch',
     })
 

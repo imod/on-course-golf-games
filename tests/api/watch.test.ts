@@ -17,13 +17,29 @@ async function fixture() {
     scope: 'per_hole',
     allowTies: false,
   })
+  const ties = await createChallenge({
+    name: 'Ties',
+    points: [3, 2, 1],
+    scope: 'per_hole',
+    allowTies: true,
+  })
   const { code } = await createRound({
     name: 'Breitenloo',
     playerIds: [domi.id, res.id, saemi.id],
-    challenges: [{ challengeId: ntp.id, holes: [3, 7, 12, 16] }],
+    challenges: [
+      { challengeId: ntp.id, holes: [3, 7, 12, 16] },
+      { challengeId: ties.id, holes: [3, 7, 12, 16] },
+    ],
   })
   const state = await getRoundState(code)
-  return { domi, res, saemi, code, rc: state!.challenges[0].id }
+  return {
+    domi,
+    res,
+    saemi,
+    code,
+    rc: state!.challenges[0].id,
+    rcTies: state!.challenges[1].id,
+  }
 }
 
 const ctx = (code: string) => ({ params: Promise.resolve({ code }) })
@@ -154,5 +170,77 @@ describe('watch API', () => {
     const body = await response.json()
     expect(body.ok).toBe(false)
     expect(body.err).toBe('not_found')
+  })
+
+  it('accepts a nested rank element as a tie', async () => {
+    const { code, rcTies, domi, res, saemi } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ rc: rcTies, hole: 7, ranks: [[domi.id, res.id], saemi.id] }),
+      }),
+      ctx(code),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    const points = Object.fromEntries(body.standings.map((s: { id: string; p: number }) => [s.id, s.p]))
+    expect(points[domi.id]).toBe(3)
+    expect(points[res.id]).toBe(3)
+    expect(points[saemi.id]).toBe(1)
+  })
+
+  it('still accepts the flat form', async () => {
+    const { code, rc, domi, res } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ rc, hole: 7, ranks: [domi.id, res.id] }),
+      }),
+      ctx(code),
+    )
+    expect(response.status).toBe(200)
+    const points = Object.fromEntries(
+      (await response.json()).standings.map((s: { id: string; p: number }) => [s.id, s.p]),
+    )
+    expect(points[domi.id]).toBe(3)
+    expect(points[res.id]).toBe(2)
+  })
+
+  it('400s a tie on a challenge that does not allow one', async () => {
+    const { code, rc, domi, res } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ rc, hole: 7, ranks: [[domi.id, res.id]] }),
+      }),
+      ctx(code),
+    )
+    expect(response.status).toBe(400)
+    expect((await response.json()).err).toBe('bad_request')
+  })
+
+  it('400s a malformed rank element', async () => {
+    const { code, rc } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ rc, hole: 7, ranks: [42] }),
+      }),
+      ctx(code),
+    )
+    expect(response.status).toBe(400)
+  })
+
+  it('400s an empty tie group', async () => {
+    const { code, rc } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ rc, hole: 7, ranks: [[]] }),
+      }),
+      ctx(code),
+    )
+    expect(response.status).toBe(400)
   })
 })
