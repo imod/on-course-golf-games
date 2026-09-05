@@ -55,6 +55,28 @@ describe('admin API', () => {
     expect((await response.json()).archived).toBe(true)
   })
 
+  it('400s a challenge patch with an invalid scope', async () => {
+    const challenge = await createChallenge({
+      name: 'Longest drive',
+      points: [1],
+      scope: 'per_hole',
+      allowTies: false,
+    })
+    const response = await patchChallenge(authed({ id: challenge.id, scope: 'bogus' }, 'PATCH'))
+    expect(response.status).toBe(400)
+  })
+
+  it('400s a challenge patch with non-array points', async () => {
+    const challenge = await createChallenge({
+      name: 'Closest to pin',
+      points: [1],
+      scope: 'per_hole',
+      allowTies: false,
+    })
+    const response = await patchChallenge(authed({ id: challenge.id, points: 'nope' }, 'PATCH'))
+    expect(response.status).toBe(400)
+  })
+
   it('creates a player', async () => {
     const response = await postPlayer(authed({ name: 'Domi' }))
     expect(response.status).toBe(200)

@@ -3,24 +3,73 @@ import { requireAdmin, AdminError, adminErrorResponse } from '@/server/admin-aut
 import { errorResponse, readJson } from '@/server/http'
 import { RoundError } from '@/server/rounds'
 
+function validatePoints(points: unknown): number[] {
+  if (!Array.isArray(points) || points.length === 0 || points.some((p) => typeof p !== 'number')) {
+    throw new RoundError('bad_request', 'points must be a non-empty list of numbers')
+  }
+  return points
+}
+
+function validateScope(scope: unknown): 'per_hole' | 'per_round' {
+  if (scope !== 'per_hole' && scope !== 'per_round') {
+    throw new RoundError('bad_request', 'scope must be per_hole or per_round')
+  }
+  return scope
+}
+
 function parseInput(raw: unknown): ChallengeInput {
   const body = raw as Partial<ChallengeInput>
   if (typeof body?.name !== 'string' || body.name.trim() === '') {
     throw new RoundError('bad_request', 'name is required')
   }
-  if (!Array.isArray(body.points) || body.points.length === 0 || body.points.some((p) => typeof p !== 'number')) {
-    throw new RoundError('bad_request', 'points must be a non-empty list of numbers')
-  }
-  if (body.scope !== 'per_hole' && body.scope !== 'per_round') {
-    throw new RoundError('bad_request', 'scope must be per_hole or per_round')
-  }
+  const points = validatePoints(body.points)
+  const scope = validateScope(body.scope)
   return {
     name: body.name,
     description: body.description ?? '',
-    points: body.points,
-    scope: body.scope,
+    points,
+    scope,
     allowTies: Boolean(body.allowTies),
   }
+}
+
+/** Validates each optional field of a PATCH body, leaving absent fields absent. */
+function parsePatch(raw: unknown): Partial<ChallengeInput> {
+  const body = raw as Partial<ChallengeInput>
+  const patch: Partial<ChallengeInput> = {}
+
+  if (body.name !== undefined) {
+    if (typeof body.name !== 'string' || body.name.trim() === '') {
+      throw new RoundError('bad_request', 'name must be a non-empty string')
+    }
+    patch.name = body.name
+  }
+  if (body.description !== undefined) {
+    if (typeof body.description !== 'string') {
+      throw new RoundError('bad_request', 'description must be a string')
+    }
+    patch.description = body.description
+  }
+  if (body.points !== undefined) {
+    patch.points = validatePoints(body.points)
+  }
+  if (body.scope !== undefined) {
+    patch.scope = validateScope(body.scope)
+  }
+  if (body.allowTies !== undefined) {
+    if (typeof body.allowTies !== 'boolean') {
+      throw new RoundError('bad_request', 'allowTies must be a boolean')
+    }
+    patch.allowTies = body.allowTies
+  }
+  if (body.archived !== undefined) {
+    if (typeof body.archived !== 'boolean') {
+      throw new RoundError('bad_request', 'archived must be a boolean')
+    }
+    patch.archived = body.archived
+  }
+
+  return patch
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -49,8 +98,7 @@ export async function PATCH(request: Request): Promise<Response> {
     requireAdmin(request)
     const body = (await readJson(request)) as { id?: unknown } & Partial<ChallengeInput>
     if (typeof body.id !== 'string') throw new RoundError('bad_request', 'id is required')
-    const { id, ...patch } = body
-    return Response.json(await updateChallenge(id, patch as Partial<ChallengeInput>))
+    return Response.json(await updateChallenge(body.id, parsePatch(body)))
   } catch (error) {
     if (error instanceof AdminError) return adminErrorResponse()
     return errorResponse(error)
