@@ -32,19 +32,19 @@ describe('SetupForm', () => {
   })
 
   it('starts with nothing selected and the start button disabled', () => {
-    render(<SetupForm players={players} challenges={challenges} />)
+    render(<SetupForm players={players} challenges={challenges} locale="en" />)
     expect(screen.getByRole('button', { name: /start round/i }).hasAttribute('disabled')).toBe(true)
   })
 
   it('enables start once a player and a game are chosen', () => {
-    render(<SetupForm players={players} challenges={challenges} />)
+    render(<SetupForm players={players} challenges={challenges} locale="en" />)
     fireEvent.click(screen.getByRole('button', { name: 'Domi' }))
     fireEvent.click(screen.getByRole('button', { name: /nearest to the pin/i }))
     expect(screen.getByRole('button', { name: /start round/i }).hasAttribute('disabled')).toBe(false)
   })
 
   it('posts the round and navigates to it', async () => {
-    render(<SetupForm players={players} challenges={challenges} />)
+    render(<SetupForm players={players} challenges={challenges} locale="en" />)
     fireEvent.click(screen.getByRole('button', { name: 'Domi' }))
     fireEvent.click(screen.getByRole('button', { name: /nearest to the pin/i }))
     fireEvent.change(screen.getByLabelText(/where/i), { target: { value: 'Breitenloo' } })
@@ -60,7 +60,7 @@ describe('SetupForm', () => {
   it('re-enables Start and shows a message when the request fails at the network level', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-    render(<SetupForm players={players} challenges={challenges} />)
+    render(<SetupForm players={players} challenges={challenges} locale="en" />)
     fireEvent.click(screen.getByRole('button', { name: 'Domi' }))
     fireEvent.click(screen.getByRole('button', { name: /nearest to the pin/i }))
     fireEvent.click(screen.getByRole('button', { name: /start round/i }))
@@ -73,7 +73,7 @@ describe('SetupForm', () => {
   })
 
   it('sends the parsed hole list when a valid list is entered', async () => {
-    render(<SetupForm players={players} challenges={challenges} />)
+    render(<SetupForm players={players} challenges={challenges} locale="en" />)
     fireEvent.click(screen.getByRole('button', { name: 'Domi' }))
     fireEvent.click(screen.getByRole('button', { name: /nearest to the pin/i }))
     fireEvent.change(screen.getByLabelText(/holes for nearest to the pin/i), { target: { value: '3,,7' } })
@@ -85,7 +85,7 @@ describe('SetupForm', () => {
   })
 
   it('flags unreadable hole text instead of silently applying the game to all holes', async () => {
-    render(<SetupForm players={players} challenges={challenges} />)
+    render(<SetupForm players={players} challenges={challenges} locale="en" />)
     fireEvent.click(screen.getByRole('button', { name: 'Domi' }))
     fireEvent.click(screen.getByRole('button', { name: /nearest to the pin/i }))
     fireEvent.change(screen.getByLabelText(/holes for nearest to the pin/i), { target: { value: 'abc' } })
@@ -96,6 +96,25 @@ describe('SetupForm', () => {
     await vi.waitFor(() => expect(push).toHaveBeenCalled())
     const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string)
     expect(body.challenges).toEqual([{ challengeId: 'c1', holes: [] }])
+  })
+})
+
+describe('SetupForm in German', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'K7QFM2XT9R' }), { status: 200 })),
+    )
+  })
+
+  it('renders German labels and the German start button', () => {
+    render(<SetupForm players={players} challenges={challenges} locale="de" />)
+    expect(screen.getByText('Wo')).toBeDefined()
+    expect(screen.getByText('Flight')).toBeDefined()
+    expect(screen.getByText('Spiele')).toBeDefined()
+    expect(screen.getByRole('button', { name: /runde starten/i })).toBeDefined()
+    // Catalog data (the challenge name typed in /admin) is never translated.
+    expect(screen.getByRole('button', { name: /nearest to the pin/i })).toBeDefined()
   })
 })
 

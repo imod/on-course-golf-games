@@ -30,7 +30,13 @@ test.afterAll(async () => {
   }
 })
 
-test('a flight plays a round from two devices', async ({ page, browser }) => {
+test('a flight plays a round from two devices', async ({ page, browser, context }) => {
+  // The app defaults to German; pin English so the assertions below (which
+  // read English UI text) hold regardless of the running browser's locale.
+  await context.addCookies([
+    { name: 'locale', value: 'en', domain: 'localhost', path: '/' },
+  ])
+
   const api = await request.newContext({ baseURL: 'http://localhost:3000' })
 
   const domi = await (
@@ -84,7 +90,11 @@ test('a flight plays a round from two devices', async ({ page, browser }) => {
   // device to the round, move to hole 2, and check the rendered cells and
   // standings actually reflect what the watch wrote (not just that the API
   // agrees with itself).
-  const second = await browser.newPage()
+  const secondContext = await browser.newContext()
+  await secondContext.addCookies([
+    { name: 'locale', value: 'en', domain: 'localhost', path: '/' },
+  ])
+  const second = await secondContext.newPage()
   await second.goto(`/r/${round.code}`)
   await expect(second.getByText('E2E Breitenloo')).toBeVisible()
 

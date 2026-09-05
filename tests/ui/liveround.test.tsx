@@ -10,6 +10,10 @@ vi.mock('@/lib/supabase-browser', () => ({
   }),
 }))
 
+// The language toggle in the header uses next/navigation's router to
+// refresh the page after switching locales; jsdom has no app router mounted.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: () => {} }) }))
+
 const initial: RoundState = {
   id: 'r1',
   code: 'K7QFM2XT9R',
@@ -62,20 +66,20 @@ describe('LiveRound', () => {
   })
 
   it('starts on hole 1 and steps forward', () => {
-    render(<LiveRound initial={initial} />)
+    render(<LiveRound initial={initial} locale="en" />)
     expect(screen.getByTestId('hole-number').textContent).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: /next hole/i }))
     expect(screen.getByTestId('hole-number').textContent).toBe('2')
   })
 
   it('does not step past the last hole or before the first', () => {
-    render(<LiveRound initial={initial} />)
+    render(<LiveRound initial={initial} locale="en" />)
     fireEvent.click(screen.getByRole('button', { name: /previous hole/i }))
     expect(screen.getByTestId('hole-number').textContent).toBe('1')
   })
 
   it('posts placements when cells are tapped in order and confirmed', async () => {
-    render(<LiveRound initial={initial} />)
+    render(<LiveRound initial={initial} locale="en" />)
 
     fireEvent.click(screen.getByTestId('cell-c1-p1'))
     expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
@@ -93,7 +97,7 @@ describe('LiveRound', () => {
   })
 
   it('seeds the draft from the saved result instead of starting empty', () => {
-    render(<LiveRound initial={withSaved} />)
+    render(<LiveRound initial={withSaved} locale="en" />)
 
     // Before any tap the saved points are on screen.
     expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
@@ -105,7 +109,7 @@ describe('LiveRound', () => {
   })
 
   it('does not drop the saved entries when one player is corrected', async () => {
-    render(<LiveRound initial={withSaved} />)
+    render(<LiveRound initial={withSaved} locale="en" />)
 
     fireEvent.click(screen.getByTestId('cell-c1-p2'))
     fireEvent.click(screen.getByTestId('save-c1'))
@@ -120,7 +124,7 @@ describe('LiveRound', () => {
   })
 
   it('lets an entry be cleared by deselecting everyone, and says so', async () => {
-    render(<LiveRound initial={withSaved} />)
+    render(<LiveRound initial={withSaved} locale="en" />)
 
     fireEvent.click(screen.getByTestId('cell-c1-p1'))
     expect(screen.getByTestId('cell-c1-p1').textContent).not.toContain('3')
@@ -134,7 +138,7 @@ describe('LiveRound', () => {
   })
 
   it('keeps drafts on separate holes apart', () => {
-    render(<LiveRound initial={withSaved} />)
+    render(<LiveRound initial={withSaved} locale="en" />)
 
     fireEvent.click(screen.getByTestId('cell-c1-p2'))
     fireEvent.click(screen.getByRole('button', { name: /next hole/i }))
@@ -146,7 +150,7 @@ describe('LiveRound', () => {
   })
 
   it('asks for confirmation before finishing the round', async () => {
-    render(<LiveRound initial={initial} />)
+    render(<LiveRound initial={initial} locale="en" />)
 
     fireEvent.click(screen.getByRole('button', { name: /^finish round$/i }))
     expect(fetch).not.toHaveBeenCalled()
@@ -158,7 +162,7 @@ describe('LiveRound', () => {
   })
 
   it('can back out of finishing the round', () => {
-    render(<LiveRound initial={initial} />)
+    render(<LiveRound initial={initial} locale="en" />)
 
     fireEvent.click(screen.getByRole('button', { name: /^finish round$/i }))
     fireEvent.click(screen.getByRole('button', { name: /keep playing/i }))
@@ -168,7 +172,7 @@ describe('LiveRound', () => {
   })
 
   it('shows the round as read-only once finished', () => {
-    render(<LiveRound initial={{ ...initial, status: 'finished' }} />)
+    render(<LiveRound initial={{ ...initial, status: 'finished' }} locale="en" />)
     expect(screen.queryByTestId('save-c1')).toBeNull()
     expect(screen.getByText(/finished/i)).toBeDefined()
   })
@@ -176,7 +180,7 @@ describe('LiveRound', () => {
   it('shows an error and keeps the pending selection when save fails at the network level', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-    render(<LiveRound initial={initial} />)
+    render(<LiveRound initial={initial} locale="en" />)
 
     fireEvent.click(screen.getByTestId('cell-c1-p1'))
     expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
@@ -187,5 +191,29 @@ describe('LiveRound', () => {
 
     expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
     expect(screen.getByTestId('save-c1')).toBeDefined()
+  })
+})
+
+describe('LiveRound in German', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(initial), { status: 200 })))
+  })
+
+  it('renders German labels, date and hole navigation', () => {
+    render(<LiveRound initial={initial} locale="de" />)
+    expect(screen.getByText(/12\.09\.2026/)).toBeDefined()
+    expect(screen.getByText(/2 Spieler/)).toBeDefined()
+    expect(screen.getByRole('button', { name: /nächstes loch/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /vorheriges loch/i })).toBeDefined()
+    expect(screen.getByText('Loch')).toBeDefined()
+    expect(screen.getByRole('button', { name: /^runde beenden$/i })).toBeDefined()
+    // Catalog data (the challenge name typed in /admin) is never translated.
+    expect(screen.getByText('Nearest pin')).toBeDefined()
+  })
+
+  it('shows the German save label for a challenge', () => {
+    render(<LiveRound initial={initial} locale="de" />)
+    fireEvent.click(screen.getByTestId('cell-c1-p1'))
+    expect(screen.getByTestId('save-c1').textContent).toMatch(/speichern/i)
   })
 })
