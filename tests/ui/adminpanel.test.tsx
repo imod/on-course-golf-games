@@ -55,4 +55,18 @@ describe('AdminPanel', () => {
     render(<AdminPanel />)
     await screen.findByText('Nearest to the pin')
   })
+
+  it('shows a network error without clearing the stored password or returning to the prompt', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+    )
+    window.localStorage.setItem('golf-admin-password', 'secret')
+
+    render(<AdminPanel />)
+
+    await screen.findByText(/network/i)
+    expect(screen.queryByLabelText(/house password/i)).toBeNull()
+    expect(window.localStorage.getItem('golf-admin-password')).toBe('secret')
+  })
 })

@@ -12,6 +12,7 @@ export function AdminPanel() {
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [networkError, setNetworkError] = useState<string | null>(null)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(KEY)
@@ -20,21 +21,29 @@ export function AdminPanel() {
 
   const load = useCallback(async (secret: string) => {
     const headers = { 'x-admin-password': secret, 'content-type': 'application/json' }
-    const [c, p] = await Promise.all([
-      fetch('/api/admin/challenges?archived=true', { headers }),
-      fetch('/api/admin/players?archived=true', { headers }),
-    ])
+    try {
+      const [c, p] = await Promise.all([
+        fetch('/api/admin/challenges?archived=true', { headers }),
+        fetch('/api/admin/players?archived=true', { headers }),
+      ])
 
-    if (!c.ok || !p.ok) {
-      setError('Wrong password.')
-      setPassword(null)
-      window.localStorage.removeItem(KEY)
-      return
+      if (!c.ok || !p.ok) {
+        setError('Wrong password.')
+        setPassword(null)
+        window.localStorage.removeItem(KEY)
+        return
+      }
+
+      setError(null)
+      setNetworkError(null)
+      setChallenges((await c.json()) as Challenge[])
+      setPlayers((await p.json()) as Player[])
+    } catch {
+      // Network-level failure (offline, DNS, timeout) is not a rejected
+      // password: surface it distinctly and leave the stored password and
+      // unlocked state alone so a wifi hiccup doesn't log the user out.
+      setNetworkError('Network error — could not reach the server. Check your connection and try again.')
     }
-
-    setError(null)
-    setChallenges((await c.json()) as Challenge[])
-    setPlayers((await p.json()) as Player[])
   }, [])
 
   useEffect(() => {
@@ -43,21 +52,31 @@ export function AdminPanel() {
 
   async function addPlayer(name: string) {
     if (!password || name.trim() === '') return
-    await fetch('/api/admin/players', {
-      method: 'POST',
-      headers: { 'x-admin-password': password, 'content-type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() }),
-    })
+    try {
+      await fetch('/api/admin/players', {
+        method: 'POST',
+        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+      })
+    } catch {
+      setNetworkError('Network error — could not reach the server. Check your connection and try again.')
+      return
+    }
     await load(password)
   }
 
   async function toggleArchived(challenge: Challenge) {
     if (!password) return
-    await fetch('/api/admin/challenges', {
-      method: 'PATCH',
-      headers: { 'x-admin-password': password, 'content-type': 'application/json' },
-      body: JSON.stringify({ id: challenge.id, archived: !challenge.archived }),
-    })
+    try {
+      await fetch('/api/admin/challenges', {
+        method: 'PATCH',
+        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
+        body: JSON.stringify({ id: challenge.id, archived: !challenge.archived }),
+      })
+    } catch {
+      setNetworkError('Network error — could not reach the server. Check your connection and try again.')
+      return
+    }
     await load(password)
   }
 
@@ -102,6 +121,12 @@ export function AdminPanel() {
       <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 0 }}>
         Edits here apply to future rounds only — every round keeps the settings it started with.
       </p>
+
+      {networkError && (
+        <div role="alert" style={{ fontSize: 14, color: 'var(--ink)', marginBottom: 16 }}>
+          {networkError}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 40, marginTop: 28 }}>
         <div>
