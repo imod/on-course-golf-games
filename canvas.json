@@ -1,0 +1,14 @@
+{
+  "artboards": [
+    { "file": "History.dc.html", "title": "Home / history", "x": 0, "y": 0, "w": 390, "h": 844 },
+    { "file": "Setup.dc.html", "title": "New round", "x": 510, "y": 0, "w": 390, "h": 844 },
+    { "file": "Main.dc.html", "title": "Live round", "x": 1020, "y": 0, "w": 390, "h": 844 },
+    { "file": "Admin.dc.html", "title": "Admin — games & players", "x": 1530, "y": 0, "w": 1280, "h": 900 }
+  ],
+  "annotations": [
+    { "id": "note-system", "x": 0, "y": -300, "w": 900, "text": "Clubhouse scorecard, hi-fi.\n\nInk #1b2019 on cream #f2eee1, one accent green #1f5a2c used only as a solid fill behind cream text — that is the fix for the direction's sun-legibility weakness: nothing important is green-on-cream.\n\nInstrument Serif for names and numbers, Space Grotesk for everything else. Ruled grid: 1.5px outer rules, 1px inner dividers, 4–6px radii, pills for chips and toggles." },
+    { "id": "note-flow", "x": 1020, "y": -300, "w": 390, "text": "The live round is the screen that matters. Whole hole visible at once: games as rows, players as columns, tap a cell to set rank. Cells are 40px inside 62px rows — the row is the real target." },
+    { "id": "note-admin", "x": 1530, "y": -300, "w": 640, "text": "Admin is the only desktop screen — it is central config you do at home, not on the tee. Points-by-rank is edited as a row of rank boxes, so adding a 4th place is one tap." }
+  ],
+  "launch": { "view": "canvas" }
+}

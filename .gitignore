@@ -1,0 +1,8 @@
+node_modules
+.next
+.env
+.env.local
+test-results
+playwright-report
+golf-games-directions.html
+.superpowers

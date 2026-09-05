@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif; }
+    a { color: #143d1e; } a:hover { color: #143d1e; }
+  </style>
+</helmet>
+
+<div style="width: 1280px; height: 900px; box-sizing: border-box; background: #f2eee1; color: #1b2019; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; padding: 34px 40px 24px 40px; border-bottom: 1.5px solid #1b2019;">
+    <div>
+      <div style="font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: #6f7566;">Central setup</div>
+      <div style="font-family: 'Instrument Serif', Georgia, serif; font-size: 40px; line-height: 1.05; margin-top: 4px;">Games &amp; players</div>
+    </div>
+    <div style="font-size: 14px; color: #6f7566; max-width: 420px; text-align: right; line-height: 1.45;">Edits here apply to future rounds only &mdash; every round keeps the settings it started with.</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 40px; padding: 28px 40px 0 40px; flex-grow: 1;">
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <div style="font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: #6f7566;">Games</div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; background: #1b2019; color: #f2eee1; border-radius: 6px; font-size: 15px; font-weight: 500;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f2eee1" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          New game
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px 200px 120px 44px; gap: 0 16px; padding: 0 16px 10px 16px; border-bottom: 1.5px solid #1b2019; font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: #6f7566;">
+        <div>Name</div><div>Scope</div><div>Points by rank</div><div>Ties</div><div></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px 200px 120px 44px; gap: 0 16px; align-items: center; padding: 0 16px; height: 62px; border-bottom: 1px solid #d6cfba;">
+        <div style="font-size: 17px; font-weight: 500;">Nearest to the pin</div>
+        <div style="font-size: 15px; color: #6f7566;">per hole</div>
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">3</div>
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">2</div>
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">1</div>
+          <div style="width: 34px; height: 34px; border: 1.5px dashed #b9b19a; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b9080" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </div>
+        </div>
+        <div style="font-size: 15px; color: #6f7566;">strict order</div>
+        <div style="display: flex; justify-content: flex-end;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10a2.8 2.8 0 10-4-4L4 16z"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px 200px 120px 44px; gap: 0 16px; align-items: center; padding: 0 16px; height: 62px; border-bottom: 1px solid #d6cfba;">
+        <div style="font-size: 17px; font-weight: 500;">Hole winner</div>
+        <div style="font-size: 15px; color: #6f7566;">per hole</div>
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">1</div>
+          <div style="width: 34px; height: 34px; border: 1.5px dashed #b9b19a; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b9080" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </div>
+        </div>
+        <div style="font-size: 15px; color: #6f7566;">shared</div>
+        <div style="display: flex; justify-content: flex-end;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10a2.8 2.8 0 10-4-4L4 16z"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px 200px 120px 44px; gap: 0 16px; align-items: center; padding: 0 16px; height: 62px; border-bottom: 1px solid #d6cfba;">
+        <div style="font-size: 17px; font-weight: 500;">Fewest putts</div>
+        <div style="font-size: 15px; color: #6f7566;">per hole</div>
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">2</div>
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">1</div>
+          <div style="width: 34px; height: 34px; border: 1.5px dashed #b9b19a; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b9080" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </div>
+        </div>
+        <div style="font-size: 15px; color: #6f7566;">shared</div>
+        <div style="display: flex; justify-content: flex-end;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10a2.8 2.8 0 10-4-4L4 16z"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px 200px 120px 44px; gap: 0 16px; align-items: center; padding: 0 16px; height: 62px; border-bottom: 1px solid #d6cfba;">
+        <div style="font-size: 17px; font-weight: 500;">Longest drive</div>
+        <div style="font-size: 15px; color: #6f7566;">per hole</div>
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 34px; height: 34px; border: 1.5px solid #1b2019; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">1</div>
+          <div style="width: 34px; height: 34px; border: 1.5px dashed #b9b19a; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b9080" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </div>
+        </div>
+        <div style="font-size: 15px; color: #6f7566;">strict order</div>
+        <div style="display: flex; justify-content: flex-end;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6f7566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10a2.8 2.8 0 10-4-4L4 16z"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 120px 200px 120px 44px; gap: 0 16px; align-items: center; padding: 0 16px; height: 62px; color: #8b9080;">
+        <div style="font-size: 17px; font-weight: 500; text-decoration: line-through;">Sandy save</div>
+        <div style="font-size: 15px;">per round</div>
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 34px; height: 34px; border: 1.5px solid #b9b19a; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px;">1</div>
+        </div>
+        <div style="font-size: 15px;">archived</div>
+        <div></div>
+      </div>
+
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; border-left: 1.5px solid #1b2019; padding-left: 40px;">
+
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <div style="font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; color: #6f7566;">Players</div>
+        <div style="font-size: 14px; color: #6f7566;">5</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-bottom: 1px solid #d6cfba;">
+          <div style="width: 34px; height: 34px; border-radius: 999px; background: #1b2019; color: #f2eee1; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">DO</div>
+          <div style="font-size: 17px; flex-grow: 1;">Domi</div>
+          <div style="font-size: 14px; color: #6f7566;">12 rounds</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-bottom: 1px solid #d6cfba;">
+          <div style="width: 34px; height: 34px; border-radius: 999px; background: #1b2019; color: #f2eee1; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">RE</div>
+          <div style="font-size: 17px; flex-grow: 1;">Res</div>
+          <div style="font-size: 14px; color: #6f7566;">12 rounds</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-bottom: 1px solid #d6cfba;">
+          <div style="width: 34px; height: 34px; border-radius: 999px; background: #1b2019; color: #f2eee1; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">S&Auml;</div>
+          <div style="font-size: 17px; flex-grow: 1;">S&auml;mi</div>
+          <div style="font-size: 14px; color: #6f7566;">11 rounds</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-bottom: 1px solid #d6cfba;">
+          <div style="width: 34px; height: 34px; border-radius: 999px; background: #1b2019; color: #f2eee1; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">CH</div>
+          <div style="font-size: 17px; flex-grow: 1;">Chrigi</div>
+          <div style="font-size: 14px; color: #6f7566;">9 rounds</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; height: 56px; border-bottom: 1px solid #d6cfba;">
+          <div style="width: 34px; height: 34px; border-radius: 999px; border: 1.5px solid #b9b19a; color: #6f7566; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">PE</div>
+          <div style="font-size: 17px; flex-grow: 1;">Pesche</div>
+          <div style="font-size: 14px; color: #6f7566;">2 rounds</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border: 1.5px dashed #b9b19a; border-radius: 6px; color: #6f7566; font-size: 15px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6f7566" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+        Add player
+      </div>
+
+    </div>
+
+  </div>
+
+  <div style="padding: 24px 40px 30px 40px; font-size: 14px; color: #6f7566;">Signed in with the house password.</div>
+
+</div>
+</x-dc>
+</body>
+</html>
