@@ -31,6 +31,16 @@ const initial: RoundState = {
   ],
 }
 
+/** The same round with hole 1 of the challenge already scored: Domi first. */
+const withSaved: RoundState = {
+  ...initial,
+  results: [{ roundChallengeId: 'c1', hole: 1, playerId: 'p1', rank: 1, points: 3 }],
+  standings: [
+    { playerId: 'p1', points: 3 },
+    { playerId: 'p2', points: 0 },
+  ],
+}
+
 describe('LiveRound', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -80,6 +90,81 @@ describe('LiveRound', () => {
       hole: 1,
       placements: [['p1']],
     })
+  })
+
+  it('seeds the draft from the saved result instead of starting empty', () => {
+    render(<LiveRound initial={withSaved} />)
+
+    // Before any tap the saved points are on screen.
+    expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
+
+    // Adding second place must leave first place exactly where it was.
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+    expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
+    expect(screen.getByTestId('cell-c1-p2').textContent).toContain('2')
+  })
+
+  it('does not drop the saved entries when one player is corrected', async () => {
+    render(<LiveRound initial={withSaved} />)
+
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+    fireEvent.click(screen.getByTestId('save-c1'))
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      roundChallengeId: 'c1',
+      hole: 1,
+      placements: [['p1'], ['p2']],
+    })
+  })
+
+  it('lets an entry be cleared by deselecting everyone, and says so', async () => {
+    render(<LiveRound initial={withSaved} />)
+
+    fireEvent.click(screen.getByTestId('cell-c1-p1'))
+    expect(screen.getByTestId('cell-c1-p1').textContent).not.toContain('3')
+    expect(screen.getByTestId('save-c1').textContent).toMatch(/clear/i)
+
+    fireEvent.click(screen.getByTestId('save-c1'))
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(JSON.parse((init as RequestInit).body as string).placements).toEqual([])
+  })
+
+  it('keeps drafts on separate holes apart', () => {
+    render(<LiveRound initial={withSaved} />)
+
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+    fireEvent.click(screen.getByRole('button', { name: /next hole/i }))
+
+    // Hole 2 has nothing saved and nothing drafted.
+    expect(screen.getByTestId('cell-c1-p1').textContent).not.toContain('3')
+    expect(screen.getByTestId('cell-c1-p2').textContent).not.toContain('2')
+    expect(screen.queryByTestId('save-c1')).toBeNull()
+  })
+
+  it('asks for confirmation before finishing the round', async () => {
+    render(<LiveRound initial={initial} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /^finish round$/i }))
+    expect(fetch).not.toHaveBeenCalled()
+    expect(screen.getByText(/locks this round/i)).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: /yes, finish round/i }))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe('/api/rounds/K7QFM2XT9R/finish')
+  })
+
+  it('can back out of finishing the round', () => {
+    render(<LiveRound initial={initial} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /^finish round$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /keep playing/i }))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /^finish round$/i })).toBeDefined()
   })
 
   it('shows the round as read-only once finished', () => {

@@ -6,7 +6,11 @@ import { initials, ScoreGrid } from '@/components/ScoreGrid'
 import { Button } from '@/components/Button'
 import type { RoundState } from '@/lib/types'
 
-/** Player ids in the order they were tapped, per challenge, before saving. */
+/**
+ * Player ids in the order they will be saved, keyed by challenge and hole.
+ * A missing key means "not being edited" — the saved result is shown instead.
+ * A present but empty array means "clear this hole", which is a real edit.
+ */
 type Draft = Record<string, string[]>
 
 export function LiveRound({ initial }: { initial: RoundState }) {
@@ -14,6 +18,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
   const [hole, setHole] = useState(1)
   const [draft, setDraft] = useState<Draft>({})
   const [error, setError] = useState<string | null>(null)
+  const [confirmingFinish, setConfirmingFinish] = useState(false)
 
   const refetch = useCallback(async () => {
     try {
@@ -45,7 +50,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
       challenge.scope === 'per_round' || challenge.holes === null || challenge.holes.includes(hole),
   )
 
-  function savedRank(challengeId: string, playerId: string): number | null {
+  function savedPoints(challengeId: string, playerId: string): number | null {
     const entry = state.results.find(
       (r) =>
         r.roundChallengeId === challengeId &&
@@ -60,12 +65,34 @@ export function LiveRound({ initial }: { initial: RoundState }) {
     return challenge?.scope === 'per_round' ? null : hole
   }
 
+  /** A draft belongs to one challenge on one hole, never to the challenge alone. */
+  function draftKey(challengeId: string): string {
+    return `${challengeId}|${holeFor(challengeId) ?? 'round'}`
+  }
+
+  /** The saved order for this challenge and hole, best placement first. */
+  function savedOrder(challengeId: string): string[] {
+    return state.results
+      .filter(
+        (r) => r.roundChallengeId === challengeId && (r.hole ?? null) === holeFor(challengeId),
+      )
+      .sort((a, b) => a.rank - b.rank)
+      .map((r) => r.playerId)
+  }
+
+  /** The order being edited, or null when this challenge/hole is untouched. */
+  function draftOrder(challengeId: string): string[] | null {
+    return draft[draftKey(challengeId)] ?? null
+  }
+
   function tap(challengeId: string, playerId: string) {
     if (readOnly) return
-    const current = draft[challengeId] ?? []
+    // Seed from what is already saved, so correcting second place cannot
+    // silently wipe first place when the replace is written.
+    const current = draftOrder(challengeId) ?? savedOrder(challengeId)
     setDraft({
       ...draft,
-      [challengeId]: current.includes(playerId)
+      [draftKey(challengeId)]: current.includes(playerId)
         ? current.filter((id) => id !== playerId)
         : [...current, playerId],
     })
@@ -73,14 +100,15 @@ export function LiveRound({ initial }: { initial: RoundState }) {
 
   function pendingPoints(challengeId: string, playerId: string): number | null {
     const challenge = state.challenges.find((c) => c.id === challengeId)!
-    const order = draft[challengeId] ?? []
+    const order = draftOrder(challengeId)
+    if (order === null) return null
     const index = order.indexOf(playerId)
     if (index === -1) return null
     return challenge.points[index] ?? 0
   }
 
   async function save(challengeId: string) {
-    const order = draft[challengeId] ?? []
+    const order = draftOrder(challengeId) ?? []
     setError(null)
 
     try {
@@ -101,7 +129,9 @@ export function LiveRound({ initial }: { initial: RoundState }) {
       }
 
       setState((await response.json()) as RoundState)
-      setDraft({ ...draft, [challengeId]: [] })
+      const next = { ...draft }
+      delete next[draftKey(challengeId)]
+      setDraft(next)
     } catch {
       // Network failure: the draft selection is left exactly as it was so
       // this never looks like a successful save.
@@ -111,6 +141,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
 
   async function finish() {
     setError(null)
+    setConfirmingFinish(false)
     try {
       const response = await fetch(`/api/rounds/${state.code}/finish`, { method: 'POST' })
       if (response.ok) {
@@ -190,7 +221,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {visible.map((challenge) => {
-          const order = draft[challenge.id] ?? []
+          const order = draftOrder(challenge.id)
           return (
             <div key={challenge.id} style={{ border: '1.5px solid var(--ink)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '10px 12px' }}>
@@ -206,10 +237,13 @@ export function LiveRound({ initial }: { initial: RoundState }) {
                 }}
               >
                 {state.players.map((player) => {
+                  const editing = draftOrder(challenge.id) !== null
                   const pending = pendingPoints(challenge.id, player.id)
-                  const saved = savedRank(challenge.id, player.id)
-                  const shown = pending ?? saved
-                  const highlight = pending !== null || (saved !== null && saved > 0)
+                  const saved = savedPoints(challenge.id, player.id)
+                  // While editing, the draft is the whole truth for this
+                  // challenge and hole — a cell left out of it will be cleared.
+                  const shown = editing ? pending : saved
+                  const highlight = shown !== null && shown > 0
                   return (
                     <button
                       key={player.id}
@@ -254,7 +288,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
                 })}
               </div>
 
-              {!readOnly && order.length > 0 && (
+              {!readOnly && order !== null && (
                 <button
                   data-testid={`save-${challenge.id}`}
                   onClick={() => void save(challenge.id)}
@@ -270,7 +304,9 @@ export function LiveRound({ initial }: { initial: RoundState }) {
                     cursor: 'pointer',
                   }}
                 >
-                  Save {challenge.name}
+                  {order.length === 0
+                    ? `Clear ${challenge.name} on this hole`
+                    : `Save ${challenge.name}`}
                 </button>
               )}
             </div>
@@ -289,11 +325,30 @@ export function LiveRound({ initial }: { initial: RoundState }) {
         <ScoreGrid players={state.players} standings={state.standings} />
       </div>
 
-      {!readOnly && (
-        <Button style={{ width: '100%', marginTop: 16 }} onClick={() => void finish()}>
-          Finish round
-        </Button>
-      )}
+      {!readOnly &&
+        // Finishing locks the round for good — a DB trigger seals it and no
+        // route reopens it — so it takes a deliberate second tap.
+        (confirmingFinish ? (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 14, marginBottom: 8 }}>
+              Finishing locks this round. Nobody can add or correct a result afterwards.
+            </div>
+            <Button style={{ width: '100%' }} onClick={() => void finish()}>
+              Yes, finish round
+            </Button>
+            <Button
+              variant="secondary"
+              style={{ width: '100%', marginTop: 8 }}
+              onClick={() => setConfirmingFinish(false)}
+            >
+              Keep playing
+            </Button>
+          </div>
+        ) : (
+          <Button style={{ width: '100%', marginTop: 16 }} onClick={() => setConfirmingFinish(true)}>
+            Finish round
+          </Button>
+        ))}
     </div>
   )
 }

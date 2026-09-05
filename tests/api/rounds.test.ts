@@ -71,6 +71,26 @@ describe('round API', () => {
     expect(notifyRoundChanged).toHaveBeenCalledWith(code)
   })
 
+  it('clears a hole when an empty placement list is sent', async () => {
+    const { code, roundChallengeId, domi, res } = await fixture()
+    const post = (placements: string[][]) =>
+      postResult(
+        new Request('http://test/', {
+          method: 'POST',
+          body: JSON.stringify({ roundChallengeId, hole: 7, placements }),
+        }),
+        ctx(code),
+      )
+
+    await post([[domi.id], [res.id]])
+    const response = await post([])
+
+    expect(response.status).toBe(200)
+    const state = await response.json()
+    expect(state.results.filter((r: { hole: number }) => r.hole === 7)).toHaveLength(0)
+    expect(state.standings.every((s: { points: number }) => s.points === 0)).toBe(true)
+  })
+
   it('400s a malformed body', async () => {
     const { code } = await fixture()
     const response = await postResult(
