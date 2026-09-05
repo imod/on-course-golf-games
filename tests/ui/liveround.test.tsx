@@ -253,7 +253,20 @@ describe('LiveRound', () => {
     expect(screen.getByTestId('cell-c1-p1').textContent).toContain('3')
   })
 
-  it('seeds an existing tie back into the draft', () => {
+  it('does not carry a refused-tie message to a hole where nothing was tapped', () => {
+    render(<LiveRound initial={initial} locale="en" />)
+
+    fireEvent.click(screen.getByTestId('cell-c1-p1'))
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+    fireEvent.click(screen.getByTestId('cell-c1-p2'))
+    expect(screen.getByText(/ties are not allowed/i)).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: /next hole/i }))
+
+    expect(screen.queryByText(/ties are not allowed/i)).toBeNull()
+  })
+
+  it('seeds an existing tie back into the draft, grouped rather than flattened', () => {
     const withTie: RoundState = {
       ...tieAllowedRound,
       results: [
@@ -263,13 +276,16 @@ describe('LiveRound', () => {
     }
     render(<LiveRound initial={withTie} locale="en" />)
 
-    // A tap on some other player in the same challenge/hole seeds the draft
-    // from the saved groups; the existing tie between p1 and p2 must survive
-    // that seed rather than being flattened into a strict order.
-    fireEvent.click(screen.getByTestId('cell-c2-p1'))
+    // Tap the *second* member of the tie. Under correct grouping this is
+    // "already tied — remove just this player", leaving p1 alone at rank 1
+    // and p2 unscored. Under a flattened seed (one place per saved result,
+    // p1 first then p2 second), this tap would instead take the "alone in a
+    // later place, ties allowed" branch and *join* p2 onto p1 — leaving both
+    // still showing 2. Only the grouped seed produces the assertions below.
+    fireEvent.click(screen.getByTestId('cell-c2-p2'))
 
-    expect(screen.getByTestId('cell-c2-p1').textContent).not.toContain('2')
-    expect(screen.getByTestId('cell-c2-p2').textContent).toContain('2')
+    expect(screen.getByTestId('cell-c2-p1').textContent).toContain('2')
+    expect(screen.getByTestId('cell-c2-p2').textContent).not.toContain('2')
   })
 })
 

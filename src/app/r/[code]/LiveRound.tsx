@@ -22,7 +22,9 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
   const [hole, setHole] = useState(1)
   const [draft, setDraft] = useState<Draft>({})
   const [error, setError] = useState<string | null>(null)
-  const [tieError, setTieError] = useState<string | null>(null)
+  // Keyed the same way the draft is — by (challenge, hole) — so a refusal on
+  // one hole never bleeds into another hole's identical challenge block.
+  const [tieError, setTieError] = useState<Record<string, boolean>>({})
   const [confirmingFinish, setConfirmingFinish] = useState(false)
 
   const refetch = useCallback(async () => {
@@ -106,7 +108,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
 
     if (groupIndex === -1) {
       // Unpicked: appends as a new place.
-      setTieError(null)
+      setTieError({ ...tieError, [key]: false })
       setDraft({ ...draft, [key]: [...current, [playerId]] })
       return
     }
@@ -115,7 +117,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
 
     if (group.length > 1) {
       // Already tied: this tap removes just this player from the tie.
-      setTieError(null)
+      setTieError({ ...tieError, [key]: false })
       const next = current
         .map((g, i) => (i === groupIndex ? g.filter((id) => id !== playerId) : g))
         .filter((g) => g.length > 0)
@@ -125,15 +127,15 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
 
     if (groupIndex === 0 || !challenge.allowTies) {
       // Alone in first place, or ties are not allowed for this game: remove.
-      if (!challenge.allowTies && groupIndex > 0) setTieError(challenge.name)
-      else setTieError(null)
+      const refused = !challenge.allowTies && groupIndex > 0
+      setTieError({ ...tieError, [key]: refused })
       const next = current.filter((_, i) => i !== groupIndex)
       setDraft({ ...draft, [key]: next })
       return
     }
 
     // Alone in a later place with ties allowed: join the previous place.
-    setTieError(null)
+    setTieError({ ...tieError, [key]: false })
     const next = current
       .map((g, i) => (i === groupIndex - 1 ? [...g, playerId] : g))
       .filter((_, i) => i !== groupIndex)
@@ -361,7 +363,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
                     : dict.saveChallenge(challenge.name)}
                 </button>
               )}
-              {tieError === challenge.name && (
+              {tieError[draftKey(challenge.id)] && (
                 <div style={{ fontSize: 12, color: 'var(--muted)', padding: '0 12px 10px' }}>
                   {dict.tiesNotAllowed(challenge.name)}
                 </div>
