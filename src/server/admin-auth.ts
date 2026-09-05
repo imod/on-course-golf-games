@@ -7,15 +7,20 @@ export class AdminError extends Error {
   }
 }
 
-/** Throws AdminError unless the request carries the shared admin password. */
-export function requireAdmin(request: Request): void {
-  const expected = process.env.ADMIN_PASSWORD
-  const supplied = request.headers.get('x-admin-password')
-  if (!expected || !supplied) throw new AdminError()
+/** Constant-time comparison that cannot throw on a length mismatch. */
+export function secretsMatch(expected: string | undefined, supplied: string | null): boolean {
+  if (!expected || !supplied) return false
 
   const a = Buffer.from(expected)
   const b = Buffer.from(supplied)
-  if (a.length !== b.length || !timingSafeEqual(a, b)) throw new AdminError()
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+/** Throws AdminError unless the request carries the shared admin password. */
+export function requireAdmin(request: Request): void {
+  if (!secretsMatch(process.env.ADMIN_PASSWORD, request.headers.get('x-admin-password'))) {
+    throw new AdminError()
+  }
 }
 
 export function adminErrorResponse(): Response {

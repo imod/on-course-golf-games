@@ -286,3 +286,22 @@ export async function listRounds(limit = 25): Promise<RoundSummary[]> {
   }
   return summaries
 }
+
+export async function listOpenRounds(): Promise<
+  { code: string; name: string; playedOn: string }[]
+> {
+  const { data, error } = await serviceDb()
+    .from('rounds')
+    .select('code, name, played_on')
+    .eq('status', 'open')
+    .order('played_on', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) throw new RoundError('bad_request', error.message)
+
+  return (data ?? []).map((row) => ({
+    code: row.code as string,
+    name: row.name as string,
+    playedOn: row.played_on as string,
+  }))
+}

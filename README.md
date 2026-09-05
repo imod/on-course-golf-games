@@ -58,6 +58,10 @@ npm run dev
 
 Set `ADMIN_PASSWORD` in `.env.local`; `/admin` and round creation need it.
 
+Set `WATCH_TOKEN` in `.env.local`; it is the separate credential the Garmin
+watch app sends as `x-watch-token` to list open rounds and submit results —
+deliberately not the admin password, which also grants catalog writes.
+
 The Supabase CLI is a devDependency, not a global install — always run it as
 `npx supabase ...` (or via the `npm run supabase:*` scripts below).
 
@@ -118,11 +122,13 @@ npx vercel env add NEXT_PUBLIC_SUPABASE_URL production
 npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
 npx vercel env add SUPABASE_SERVICE_ROLE_KEY production
 npx vercel env add ADMIN_PASSWORD production
+npx vercel env add WATCH_TOKEN production
 npx vercel --prod
 ```
 
-Use a long random string for `ADMIN_PASSWORD`. `SUPABASE_SERVICE_ROLE_KEY` must
-NOT be prefixed `NEXT_PUBLIC_`.
+Use a long random string for `ADMIN_PASSWORD` and a separate one for
+`WATCH_TOKEN` (the watch's own credential — never reuse the admin password).
+`SUPABASE_SERVICE_ROLE_KEY` must NOT be prefixed `NEXT_PUBLIC_`.
 
 ### 3. Smoke-test production
 
