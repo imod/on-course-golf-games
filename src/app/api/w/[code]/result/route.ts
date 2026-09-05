@@ -1,14 +1,8 @@
 import { RoundError, submitResult } from '@/server/rounds'
 import { notifyRoundChanged } from '@/server/realtime'
-import { readJson } from '@/server/http'
+import { readJson, STATUS } from '@/server/http'
 
 type Ctx = { params: Promise<{ code: string }> }
-
-const STATUS: Record<RoundError['code'], number> = {
-  not_found: 404,
-  finished: 409,
-  bad_request: 400,
-}
 
 /**
  * One request per entry: the watch sends player ids in finishing order and
@@ -47,7 +41,12 @@ export async function POST(request: Request, { params }: Ctx): Promise<Response>
     })
   } catch (error) {
     if (error instanceof RoundError) {
-      return Response.json({ ok: false, err: error.message }, { status: STATUS[error.code] })
+      // `err` is a short machine code the watch can branch on; the prose goes
+      // in `msg`, which a Connect IQ client is free to ignore.
+      return Response.json(
+        { ok: false, err: error.code, msg: error.message },
+        { status: STATUS[error.code] },
+      )
     }
     console.error(error)
     return Response.json({ ok: false, err: 'internal' }, { status: 500 })

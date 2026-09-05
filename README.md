@@ -84,6 +84,11 @@ The Garmin Connect IQ app talks to two endpoints:
 Re-sending the same entry corrects it rather than duplicating it, so the watch
 can retry freely after a dropped connection.
 
+Both endpoints answer a failure with `4xx` and
+`{"ok": false, "err": "<code>", "msg": "<prose>"}`. `err` is one of
+`not_found`, `finished`, `bad_request` or `internal` — a short token the watch
+can branch on; `msg` is a human sentence for debugging and may be ignored.
+
 ## Deployment
 
 ### 1. Create the Supabase project and push the schema

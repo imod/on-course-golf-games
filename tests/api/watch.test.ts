@@ -97,7 +97,10 @@ describe('watch API', () => {
     )
 
     expect(response.status).toBe(409)
-    expect((await response.json()).ok).toBe(false)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    // A short machine code, not prose: the watch branches on this.
+    expect(body.err).toBe('finished')
   })
 
   it('400s a body missing ranks', async () => {
@@ -107,7 +110,7 @@ describe('watch API', () => {
       ctx(code),
     )
     expect(response.status).toBe(400)
-    expect((await response.json()).err).toBeTruthy()
+    expect((await response.json()).err).toBe('bad_request')
   })
 
   it('400s a body that is not valid JSON', async () => {
@@ -119,7 +122,7 @@ describe('watch API', () => {
     expect(response.status).toBe(400)
     const body = await response.json()
     expect(body.ok).toBe(false)
-    expect(body.err).toBeTruthy()
+    expect(body.err).toBe('bad_request')
   })
 
   it('400s a body that is literal null', async () => {
@@ -131,6 +134,25 @@ describe('watch API', () => {
     expect(response.status).toBe(400)
     const body = await response.json()
     expect(body.ok).toBe(false)
-    expect(body.err).toBeTruthy()
+    expect(body.err).toBe('bad_request')
+  })
+
+  it('404s an unknown code with a machine-readable code', async () => {
+    const response = await postResult(
+      new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ rc: 'x', hole: 1, ranks: [] }),
+      }),
+      ctx('ZZZZZZZZZZ'),
+    )
+    expect(response.status).toBe(404)
+    expect((await response.json()).err).toBe('not_found')
+  })
+
+  it('404s an unknown code on GET with the {ok, err} envelope', async () => {
+    const response = await getConfig(new Request('http://test/'), ctx('ZZZZZZZZZZ'))
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.err).toBe('not_found')
   })
 })

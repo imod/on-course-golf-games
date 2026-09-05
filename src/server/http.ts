@@ -1,6 +1,7 @@
 import { RoundError } from './rounds'
 
-const STATUS: Record<RoundError['code'], number> = {
+/** Maps a RoundError code onto its HTTP status. One table, used everywhere. */
+export const STATUS: Record<RoundError['code'], number> = {
   not_found: 404,
   finished: 409,
   bad_request: 400,
