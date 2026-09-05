@@ -22,6 +22,31 @@ describe('notifyRoundChanged', () => {
     expect(body.messages[0]).toMatchObject({ topic: 'round:K7QFM2XT9R', event: 'changed' })
   })
 
+  it('gives up on a hung connection instead of blocking the caller', async () => {
+    // A real hang: fetch never settles on its own, only when the signal fires.
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal!.addEventListener('abort', () => reject(init.signal!.reason))
+        }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const started = Date.now()
+    await expect(notifyRoundChanged('K7QFM2XT9R')).resolves.toBeUndefined()
+    expect(Date.now() - started).toBeLessThan(5000)
+  }, 10000)
+
+  it('passes an abort signal so the broadcast cannot hang forever', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 202 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await notifyRoundChanged('K7QFM2XT9R')
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+  })
+
   it('swallows transport failures', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
     await expect(notifyRoundChanged('K7QFM2XT9R')).resolves.toBeUndefined()
