@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { AdminPanel } from '@/app/admin/AdminPanel'
 
 describe('AdminPanel', () => {
@@ -68,5 +68,28 @@ describe('AdminPanel', () => {
     await screen.findByText(/network/i)
     expect(screen.queryByLabelText(/house password/i)).toBeNull()
     expect(window.localStorage.getItem('golf-admin-password')).toBe('secret')
+  })
+
+  it('archives a player via the toggle, sending a PATCH with the password header', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel />)
+
+    const playerName = await screen.findByText('Domi')
+    const playerRow = playerName.parentElement?.parentElement as HTMLElement
+    fireEvent.click(within(playerRow).getByRole('button', { name: /archive/i }))
+
+    await vi.waitFor(() => {
+      const patchCall = vi
+        .mocked(fetch)
+        .mock.calls.find((call) => String(call[0]) === '/api/admin/players' && call[1]?.method === 'PATCH')
+      expect(patchCall).toBeDefined()
+    })
+
+    const patchCall = vi
+      .mocked(fetch)
+      .mock.calls.find((call) => String(call[0]) === '/api/admin/players' && call[1]?.method === 'PATCH')
+    const init = patchCall?.[1] as RequestInit
+    expect((init.headers as Record<string, string>)['x-admin-password']).toBe('secret')
+    expect(JSON.parse(init.body as string)).toEqual({ id: 'p1', archived: true })
   })
 })

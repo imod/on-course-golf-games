@@ -5,6 +5,7 @@ import { Button } from '@/components/Button'
 import type { Challenge, Player } from '@/lib/types'
 
 const KEY = 'golf-admin-password'
+const NETWORK_ERROR_MESSAGE = 'Network error — could not reach the server. Check your connection and try again.'
 
 export function AdminPanel() {
   const [password, setPassword] = useState<string | null>(null)
@@ -42,7 +43,7 @@ export function AdminPanel() {
       // Network-level failure (offline, DNS, timeout) is not a rejected
       // password: surface it distinctly and leave the stored password and
       // unlocked state alone so a wifi hiccup doesn't log the user out.
-      setNetworkError('Network error — could not reach the server. Check your connection and try again.')
+      setNetworkError(NETWORK_ERROR_MESSAGE)
     }
   }, [])
 
@@ -59,7 +60,7 @@ export function AdminPanel() {
         body: JSON.stringify({ name: name.trim() }),
       })
     } catch {
-      setNetworkError('Network error — could not reach the server. Check your connection and try again.')
+      setNetworkError(NETWORK_ERROR_MESSAGE)
       return
     }
     await load(password)
@@ -74,7 +75,22 @@ export function AdminPanel() {
         body: JSON.stringify({ id: challenge.id, archived: !challenge.archived }),
       })
     } catch {
-      setNetworkError('Network error — could not reach the server. Check your connection and try again.')
+      setNetworkError(NETWORK_ERROR_MESSAGE)
+      return
+    }
+    await load(password)
+  }
+
+  async function togglePlayerArchived(player: Player) {
+    if (!password) return
+    try {
+      await fetch('/api/admin/players', {
+        method: 'PATCH',
+        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
+        body: JSON.stringify({ id: player.id, archived: !player.archived }),
+      })
+    } catch {
+      setNetworkError(NETWORK_ERROR_MESSAGE)
       return
     }
     await load(password)
@@ -174,12 +190,29 @@ export function AdminPanel() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                gap: 16,
                 height: 56,
                 borderBottom: '1px solid var(--rule)',
                 color: player.archived ? 'var(--disabled)' : 'var(--ink)',
               }}
             >
-              <div style={{ fontSize: 17 }}>{player.name}</div>
+              <div style={{ flexGrow: 1, fontSize: 17 }}>{player.name}</div>
+              <button
+                onClick={() => void togglePlayerArchived(player)}
+                style={{
+                  height: 44,
+                  padding: '0 14px',
+                  borderRadius: 6,
+                  border: '1.5px solid var(--rule)',
+                  background: 'transparent',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--sans)',
+                  fontSize: 14,
+                }}
+              >
+                {player.archived ? 'Restore' : 'Archive'}
+              </button>
             </div>
           ))}
 
