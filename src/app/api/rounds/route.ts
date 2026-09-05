@@ -1,4 +1,4 @@
-import { createRound, listRounds, RoundError, type CreateRoundInput } from '@/server/rounds'
+import { createRound, RoundError, type CreateRoundInput } from '@/server/rounds'
 import { requireAdmin, AdminError, adminErrorResponse } from '@/server/admin-auth'
 import { errorResponse, readJson } from '@/server/http'
 
@@ -19,14 +19,6 @@ function parseInput(raw: unknown): CreateRoundInput {
     holeCount: typeof body.holeCount === 'number' ? body.holeCount : undefined,
     playerIds: body.playerIds,
     challenges: body.challenges,
-  }
-}
-
-export async function GET(): Promise<Response> {
-  try {
-    return Response.json(await listRounds())
-  } catch (error) {
-    return errorResponse(error)
   }
 }
 
