@@ -4,8 +4,14 @@ import { errorResponse, readJson } from '@/server/http'
 import { RoundError } from '@/server/rounds'
 
 function validatePoints(points: unknown): number[] {
-  if (!Array.isArray(points) || points.length === 0 || points.some((p) => typeof p !== 'number')) {
-    throw new RoundError('bad_request', 'points must be a non-empty list of numbers')
+  // Integer, not just `typeof number`: NaN and Infinity are numbers, and they
+  // reach Postgres as an insert failure, which would surface as a 500.
+  if (
+    !Array.isArray(points) ||
+    points.length === 0 ||
+    points.some((p) => typeof p !== 'number' || !Number.isInteger(p))
+  ) {
+    throw new RoundError('bad_request', 'points must be a non-empty list of whole numbers')
   }
   return points
 }
@@ -15,6 +21,13 @@ function validateScope(scope: unknown): 'per_hole' | 'per_round' {
     throw new RoundError('bad_request', 'scope must be per_hole or per_round')
   }
   return scope
+}
+
+function validateAllowTies(allowTies: unknown): boolean {
+  if (allowTies !== undefined && typeof allowTies !== 'boolean') {
+    throw new RoundError('bad_request', 'allowTies must be a boolean')
+  }
+  return allowTies ?? false
 }
 
 function parseInput(raw: unknown): ChallengeInput {
@@ -29,7 +42,9 @@ function parseInput(raw: unknown): ChallengeInput {
     description: body.description ?? '',
     points,
     scope,
-    allowTies: Boolean(body.allowTies),
+    // Optional, but type-checked when present — POST and PATCH must agree on
+    // what a valid body for this resource looks like.
+    allowTies: validateAllowTies(body.allowTies),
   }
 }
 
@@ -57,10 +72,7 @@ function parsePatch(raw: unknown): Partial<ChallengeInput> {
     patch.scope = validateScope(body.scope)
   }
   if (body.allowTies !== undefined) {
-    if (typeof body.allowTies !== 'boolean') {
-      throw new RoundError('bad_request', 'allowTies must be a boolean')
-    }
-    patch.allowTies = body.allowTies
+    patch.allowTies = validateAllowTies(body.allowTies)
   }
   if (body.archived !== undefined) {
     if (typeof body.archived !== 'boolean') {
