@@ -7,6 +7,36 @@ import type { Challenge, Player } from '@/lib/types'
 
 const ADMIN_PASSWORD_KEY = 'golf-admin-password'
 
+export type ParsedHoles = { value: number[] | null; invalid: string[] }
+
+export function parseHoles(value: string | undefined): ParsedHoles {
+  if (!value || value.trim() === '') return { value: null, invalid: [] }
+
+  const tokens = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+
+  if (tokens.length === 0) return { value: null, invalid: [] }
+
+  const valid: number[] = []
+  const invalid: string[] = []
+  for (const token of tokens) {
+    const n = Number(token)
+    if (Number.isInteger(n) && n >= 1) {
+      valid.push(n)
+    } else {
+      invalid.push(token)
+    }
+  }
+
+  // A non-empty entry that could not be read as hole numbers must never be
+  // silently treated as "all holes" (value: null) — that would apply the
+  // game to every hole instead of none, which is the wrong direction to
+  // fail in. An empty array means "matches no hole" until the user fixes it.
+  return { value: valid.length > 0 ? valid : [], invalid }
+}
+
 export function SetupForm({ players, challenges }: { players: Player[]; challenges: Challenge[] }) {
   const router = useRouter()
   const [name, setName] = useState('')
@@ -22,40 +52,36 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
   }
 
-  function parseHoles(value: string | undefined): number[] | null {
-    if (!value || value.trim() === '') return null
-    const parsed = value
-      .split(',')
-      .map((part) => Number(part.trim()))
-      .filter((n) => Number.isInteger(n) && n >= 1)
-    return parsed.length > 0 ? parsed : null
-  }
-
   async function start() {
     setBusy(true)
     setError(null)
 
-    const response = await fetch('/api/rounds', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-admin-password': window.localStorage.getItem(ADMIN_PASSWORD_KEY) ?? '',
-      },
-      body: JSON.stringify({
-        name: name.trim() === '' ? 'Round' : name.trim(),
-        playerIds: chosenPlayers,
-        challenges: chosenChallenges.map((id) => ({ challengeId: id, holes: parseHoles(holes[id]) })),
-      }),
-    })
+    try {
+      const response = await fetch('/api/rounds', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-admin-password': window.localStorage.getItem(ADMIN_PASSWORD_KEY) ?? '',
+        },
+        body: JSON.stringify({
+          name: name.trim() === '' ? 'Round' : name.trim(),
+          playerIds: chosenPlayers,
+          challenges: chosenChallenges.map((id) => ({ challengeId: id, holes: parseHoles(holes[id]).value })),
+        }),
+      })
 
-    if (!response.ok) {
+      if (!response.ok) {
+        setError(response.status === 401 ? 'Enter the house password in Admin first.' : 'Could not start the round.')
+        return
+      }
+
+      const { code } = (await response.json()) as { code: string }
+      router.push(`/r/${code}`)
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
+    } finally {
       setBusy(false)
-      setError(response.status === 401 ? 'Enter the house password in Admin first.' : 'Could not start the round.')
-      return
     }
-
-    const { code } = (await response.json()) as { code: string }
-    router.push(`/r/${code}`)
   }
 
   return (
@@ -127,6 +153,7 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {challenges.map((challenge) => {
             const on = chosenChallenges.includes(challenge.id)
+            const parsedHoles = parseHoles(holes[challenge.id])
             return (
               <div
                 key={challenge.id}
@@ -158,24 +185,31 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
                 </button>
 
                 {on && challenge.scope === 'per_hole' && (
-                  <input
-                    aria-label={`Holes for ${challenge.name}`}
-                    placeholder="all holes — or 3, 7, 12, 16"
-                    value={holes[challenge.id] ?? ''}
-                    onChange={(event) => setHoles({ ...holes, [challenge.id]: event.target.value })}
-                    style={{
-                      width: '100%',
-                      marginTop: 10,
-                      height: 44,
-                      padding: '0 10px',
-                      fontSize: 15,
-                      fontFamily: 'var(--sans)',
-                      background: 'transparent',
-                      color: 'var(--ink)',
-                      border: '1.5px solid var(--rule)',
-                      borderRadius: 6,
-                    }}
-                  />
+                  <>
+                    <input
+                      aria-label={`Holes for ${challenge.name}`}
+                      placeholder="all holes — or 3, 7, 12, 16"
+                      value={holes[challenge.id] ?? ''}
+                      onChange={(event) => setHoles({ ...holes, [challenge.id]: event.target.value })}
+                      style={{
+                        width: '100%',
+                        marginTop: 10,
+                        height: 44,
+                        padding: '0 10px',
+                        fontSize: 15,
+                        fontFamily: 'var(--sans)',
+                        background: 'transparent',
+                        color: 'var(--ink)',
+                        border: '1.5px solid var(--rule)',
+                        borderRadius: 6,
+                      }}
+                    />
+                    {parsedHoles.invalid.length > 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+                        Not a hole number, ignored: {parsedHoles.invalid.join(', ')}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )
