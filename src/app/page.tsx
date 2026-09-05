@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { listRounds } from '@/server/rounds'
 import { ScoreGrid } from '@/components/ScoreGrid'
 import { buttonStyle } from '@/components/Button'
+import { LanguageToggle } from '@/components/LanguageToggle'
+import { formatDate, getDict } from '@/lib/i18n'
+import { getLocale } from '@/lib/server-locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,15 +17,19 @@ function leaderOf(standings: { playerId: string; points: number }[]): string | u
 }
 
 export default async function Home() {
-  const rounds = await listRounds()
+  const [rounds, locale] = await Promise.all([listRounds(), getLocale()])
+  const dict = getDict(locale)
 
   return (
     <main style={{ maxWidth: 430, margin: '0 auto', padding: '24px 20px 32px' }}>
-      <h1 style={{ fontFamily: 'var(--serif)', fontSize: 34, lineHeight: 1.05, margin: 0 }}>
-        On-course
-        <br />
-        games
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <h1 style={{ fontFamily: 'var(--serif)', fontSize: 34, lineHeight: 1.05, margin: 0 }}>
+          {dict.appTitleLine1}
+          <br />
+          {dict.appTitleLine2}
+        </h1>
+        <LanguageToggle locale={locale} />
+      </div>
 
       <Link
         href="/setup"
@@ -35,7 +42,7 @@ export default async function Home() {
           ...buttonStyle('primary'),
         }}
       >
-        New round
+        {dict.newRound}
       </Link>
 
       <div
@@ -47,12 +54,12 @@ export default async function Home() {
           marginBottom: 10,
         }}
       >
-        Played
+        {dict.played}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {rounds.length === 0 && (
-          <div style={{ color: 'var(--muted)', fontSize: 15 }}>No rounds yet.</div>
+          <div style={{ color: 'var(--muted)', fontSize: 15 }}>{dict.noRoundsYet}</div>
         )}
 
         {rounds.map((round) => (
@@ -82,10 +89,12 @@ export default async function Home() {
                     fontWeight: 500,
                   }}
                 >
-                  In play
+                  {dict.inPlay}
                 </span>
               ) : (
-                <span style={{ fontSize: 13, color: 'var(--muted)' }}>{round.playedOn}</span>
+                <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+                  {formatDate(round.playedOn, locale)}
+                </span>
               )}
             </div>
             <ScoreGrid

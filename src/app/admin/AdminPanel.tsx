@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/Button'
+import { LanguageToggle } from '@/components/LanguageToggle'
+import { getDict, type Locale } from '@/lib/i18n'
 import type { Challenge, Player } from '@/lib/types'
 
 const KEY = 'golf-admin-password'
-const NETWORK_ERROR_MESSAGE = 'Network error — could not reach the server. Check your connection and try again.'
 
-export function AdminPanel() {
+export function AdminPanel({ locale }: { locale: Locale }) {
+  const dict = getDict(locale)
+  const NETWORK_ERROR_MESSAGE = dict.networkError
   const [password, setPassword] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
   const [challenges, setChallenges] = useState<Challenge[]>([])
@@ -29,7 +32,7 @@ export function AdminPanel() {
       ])
 
       if (!c.ok || !p.ok) {
-        setError('Wrong password.')
+        setError(dict.wrongPassword)
         setPassword(null)
         window.localStorage.removeItem(KEY)
         return
@@ -45,7 +48,7 @@ export function AdminPanel() {
       // unlocked state alone so a wifi hiccup doesn't log the user out.
       setNetworkError(NETWORK_ERROR_MESSAGE)
     }
-  }, [])
+  }, [dict, NETWORK_ERROR_MESSAGE])
 
   useEffect(() => {
     if (password) void load(password)
@@ -99,8 +102,11 @@ export function AdminPanel() {
   if (!password) {
     return (
       <div style={{ maxWidth: 380, margin: '80px auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle locale={locale} />
+        </div>
         <label htmlFor="admin-password" style={{ fontSize: 15 }}>
-          House password
+          {dict.housePassword}
         </label>
         <input
           id="admin-password"
@@ -125,7 +131,7 @@ export function AdminPanel() {
             setPassword(typed)
           }}
         >
-          Unlock
+          {dict.unlock}
         </Button>
       </div>
     )
@@ -133,10 +139,11 @@ export function AdminPanel() {
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '34px 40px' }}>
-      <h1 style={{ fontFamily: 'var(--serif)', fontSize: 40, margin: '0 0 6px' }}>Games &amp; players</h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 0 }}>
-        Edits here apply to future rounds only — every round keeps the settings it started with.
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <h1 style={{ fontFamily: 'var(--serif)', fontSize: 40, margin: '0 0 6px' }}>{dict.gamesAndPlayers}</h1>
+        <LanguageToggle locale={locale} />
+      </div>
+      <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 0 }}>{dict.adminHint}</p>
 
       {networkError && (
         <div role="alert" style={{ fontSize: 14, color: 'var(--ink)', marginBottom: 16 }}>
@@ -160,7 +167,7 @@ export function AdminPanel() {
             >
               <div style={{ flexGrow: 1, fontSize: 17, fontWeight: 500 }}>{challenge.name}</div>
               <div style={{ fontSize: 15, color: 'var(--muted)' }}>
-                {challenge.scope === 'per_hole' ? 'per hole' : 'per round'}
+                {challenge.scope === 'per_hole' ? dict.perHole : dict.perRound}
               </div>
               <div style={{ fontSize: 15 }}>{challenge.points.join(' · ')}</div>
               <button
@@ -177,7 +184,7 @@ export function AdminPanel() {
                   fontSize: 14,
                 }}
               >
-                {challenge.archived ? 'Restore' : 'Archive'}
+                {challenge.archived ? dict.restore : dict.archive}
               </button>
             </div>
           ))}
@@ -211,7 +218,7 @@ export function AdminPanel() {
                   fontSize: 14,
                 }}
               >
-                {player.archived ? 'Restore' : 'Archive'}
+                {player.archived ? dict.restore : dict.archive}
               </button>
             </div>
           ))}
@@ -227,8 +234,8 @@ export function AdminPanel() {
           >
             <input
               name="name"
-              aria-label="New player name"
-              placeholder="New player"
+              aria-label={dict.newPlayerLabel}
+              placeholder={dict.newPlayerPlaceholder}
               style={{
                 flexGrow: 1,
                 height: 48,
@@ -242,7 +249,7 @@ export function AdminPanel() {
               }}
             />
             <Button type="submit" variant="secondary" style={{ height: 48, padding: '0 16px', fontSize: 15 }}>
-              Add
+              {dict.add}
             </Button>
           </form>
         </div>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { browserClient } from '@/lib/supabase-browser'
 import { initials, ScoreGrid } from '@/components/ScoreGrid'
 import { Button } from '@/components/Button'
+import { LanguageToggle } from '@/components/LanguageToggle'
+import { formatDate, getDict, type Locale } from '@/lib/i18n'
 import type { RoundState } from '@/lib/types'
 
 /**
@@ -13,7 +15,8 @@ import type { RoundState } from '@/lib/types'
  */
 type Draft = Record<string, string[]>
 
-export function LiveRound({ initial }: { initial: RoundState }) {
+export function LiveRound({ initial, locale }: { initial: RoundState; locale: Locale }) {
+  const dict = getDict(locale)
   const [state, setState] = useState(initial)
   const [hole, setHole] = useState(1)
   const [draft, setDraft] = useState<Draft>({})
@@ -124,7 +127,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as { error?: string }
-        setError(body.error ?? 'Could not save that. Try again.')
+        setError(body.error ?? dict.couldNotSaveTryAgain)
         return
       }
 
@@ -135,7 +138,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
     } catch {
       // Network failure: the draft selection is left exactly as it was so
       // this never looks like a successful save.
-      setError('Could not save that. Try again.')
+      setError(dict.couldNotSaveTryAgain)
     }
   }
 
@@ -147,10 +150,10 @@ export function LiveRound({ initial }: { initial: RoundState }) {
       if (response.ok) {
         setState((await response.json()) as RoundState)
       } else {
-        setError('Could not finish the round. Try again.')
+        setError(dict.couldNotFinishTryAgain)
       }
     } catch {
-      setError('Could not finish the round. Try again.')
+      setError(dict.couldNotFinishTryAgain)
     }
   }
 
@@ -162,24 +165,27 @@ export function LiveRound({ initial }: { initial: RoundState }) {
           <div
             style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--muted)', marginTop: 5 }}
           >
-            {state.playedOn} · {state.players.length} players
-            {readOnly ? ' · finished' : ''}
+            {formatDate(state.playedOn, locale)} · {dict.playersCount(state.players.length)}
+            {readOnly ? ` · ${dict.finishedSuffix}` : ''}
           </div>
         </div>
-        <div
-          style={{
-            height: 34,
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 10px',
-            border: '1.5px solid var(--ink)',
-            borderRadius: 4,
-            fontSize: 12,
-            letterSpacing: 1.1,
-            fontWeight: 500,
-          }}
-        >
-          {state.code}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              height: 34,
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 10px',
+              border: '1.5px solid var(--ink)',
+              borderRadius: 4,
+              fontSize: 12,
+              letterSpacing: 1.1,
+              fontWeight: 500,
+            }}
+          >
+            {state.code}
+          </div>
+          <LanguageToggle locale={locale} />
         </div>
       </div>
 
@@ -194,7 +200,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
         }}
       >
         <button
-          aria-label="Previous hole"
+          aria-label={dict.previousHole}
           onClick={() => setHole((h) => Math.max(1, h - 1))}
           style={navButton}
         >
@@ -204,14 +210,14 @@ export function LiveRound({ initial }: { initial: RoundState }) {
           <span
             style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--muted)', marginRight: 9 }}
           >
-            Hole
+            {dict.hole}
           </span>
           <span data-testid="hole-number" style={{ fontFamily: 'var(--serif)', fontSize: 40 }}>
             {hole}
           </span>
         </div>
         <button
-          aria-label="Next hole"
+          aria-label={dict.nextHole}
           onClick={() => setHole((h) => Math.min(state.holeCount, h + 1))}
           style={navButton}
         >
@@ -308,8 +314,8 @@ export function LiveRound({ initial }: { initial: RoundState }) {
                   }}
                 >
                   {order.length === 0
-                    ? `Clear ${challenge.name} on this hole`
-                    : `Save ${challenge.name}`}
+                    ? dict.clearChallengeOnHole(challenge.name)
+                    : dict.saveChallenge(challenge.name)}
                 </button>
               )}
             </div>
@@ -323,7 +329,7 @@ export function LiveRound({ initial }: { initial: RoundState }) {
         <div
           style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}
         >
-          Standings
+          {dict.standings}
         </div>
         <ScoreGrid players={state.players} standings={state.standings} />
       </div>
@@ -333,23 +339,21 @@ export function LiveRound({ initial }: { initial: RoundState }) {
         // route reopens it — so it takes a deliberate second tap.
         (confirmingFinish ? (
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 14, marginBottom: 8 }}>
-              Finishing locks this round. Nobody can add or correct a result afterwards.
-            </div>
+            <div style={{ fontSize: 14, marginBottom: 8 }}>{dict.finishLockWarning}</div>
             <Button style={{ width: '100%' }} onClick={() => void finish()}>
-              Yes, finish round
+              {dict.yesFinishRound}
             </Button>
             <Button
               variant="secondary"
               style={{ width: '100%', marginTop: 8 }}
               onClick={() => setConfirmingFinish(false)}
             >
-              Keep playing
+              {dict.keepPlaying}
             </Button>
           </div>
         ) : (
           <Button style={{ width: '100%', marginTop: 16 }} onClick={() => setConfirmingFinish(true)}>
-            Finish round
+            {dict.finishRound}
           </Button>
         ))}
     </div>

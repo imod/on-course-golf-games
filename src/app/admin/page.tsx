@@ -1,9 +1,14 @@
 import { AdminPanel } from './AdminPanel'
+import { getLocale } from '@/lib/server-locale'
 
-export default function AdminPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function AdminPage() {
+  const locale = await getLocale()
+
   return (
     <main>
-      <AdminPanel />
+      <AdminPanel locale={locale} />
     </main>
   )
 }

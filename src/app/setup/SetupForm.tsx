@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/Button'
 import type { Challenge, Player } from '@/lib/types'
+import { getDict, type Locale } from '@/lib/i18n'
 
 const ADMIN_PASSWORD_KEY = 'golf-admin-password'
 
@@ -37,7 +38,16 @@ export function parseHoles(value: string | undefined): ParsedHoles {
   return { value: valid.length > 0 ? valid : [], invalid }
 }
 
-export function SetupForm({ players, challenges }: { players: Player[]; challenges: Challenge[] }) {
+export function SetupForm({
+  players,
+  challenges,
+  locale,
+}: {
+  players: Player[]
+  challenges: Challenge[]
+  locale: Locale
+}) {
+  const dict = getDict(locale)
   const router = useRouter()
   const [name, setName] = useState('')
   const [chosenPlayers, setChosenPlayers] = useState<string[]>([])
@@ -71,14 +81,14 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
       })
 
       if (!response.ok) {
-        setError(response.status === 401 ? 'Enter the house password in Admin first.' : 'Could not start the round.')
+        setError(response.status === 401 ? dict.enterHousePassword : dict.couldNotStartRound)
         return
       }
 
       const { code } = (await response.json()) as { code: string }
       router.push(`/r/${code}`)
     } catch {
-      setError('Could not reach the server. Check your connection and try again.')
+      setError(dict.couldNotReachServer)
     } finally {
       setBusy(false)
     }
@@ -90,10 +100,10 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
         <span
           style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--muted)' }}
         >
-          Where
+          {dict.whereLabel}
         </span>
         <input
-          aria-label="Where"
+          aria-label={dict.whereLabel}
           value={name}
           onChange={(event) => setName(event.target.value)}
           style={{
@@ -116,7 +126,7 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
         <div
           style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}
         >
-          Flight
+          {dict.flightLabel}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {players.map((player) => {
@@ -148,7 +158,7 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
         <div
           style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}
         >
-          Games
+          {dict.gamesLabel}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {challenges.map((challenge) => {
@@ -190,8 +200,8 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
                 {on && challenge.scope === 'per_hole' && (
                   <>
                     <input
-                      aria-label={`Holes for ${challenge.name}`}
-                      placeholder="all holes — or 3, 7, 12, 16"
+                      aria-label={dict.holesForLabel(challenge.name)}
+                      placeholder={dict.holesPlaceholder}
                       value={holes[challenge.id] ?? ''}
                       onChange={(event) => setHoles({ ...holes, [challenge.id]: event.target.value })}
                       style={{
@@ -209,7 +219,7 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
                     />
                     {parsedHoles.invalid.length > 0 && (
                       <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
-                        Not a hole number, ignored: {parsedHoles.invalid.join(', ')}
+                        {dict.invalidHoles(parsedHoles.invalid.join(', '))}
                       </div>
                     )}
                   </>
@@ -223,7 +233,7 @@ export function SetupForm({ players, challenges }: { players: Player[]; challeng
       {error && <div style={{ color: 'var(--ink)', fontSize: 14 }}>{error}</div>}
 
       <Button disabled={!ready || busy} onClick={start}>
-        Start round
+        {dict.startRound}
       </Button>
     </div>
   )

@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react'
 import './tokens.css'
+import { getLocale } from '@/lib/server-locale'
 
 export const metadata = { title: 'On-course games' }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale()
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <head>
         <link
           rel="stylesheet"
