@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { resetDatabase } from '../helpers/db'
+import { resetDatabase, serviceClient } from '../helpers/db'
 import { createChallenge, createPlayer } from '@/server/catalog'
 import {
   createRound,
@@ -159,6 +159,22 @@ describe('rounds', () => {
     await expect(
       submitResult(code, { roundChallengeId: ntp.id, hole: 3, placements: [[domi.id]] }),
     ).rejects.toMatchObject({ code: 'finished' })
+  })
+
+  it('creates no round at all when a challenge id is unknown', async () => {
+    const domi = await createPlayer('Domi')
+
+    await expect(
+      createRound({
+        name: 'Orphan check',
+        playerIds: [domi.id],
+        challenges: [{ challengeId: '00000000-0000-0000-0000-000000000000', holes: null }],
+      }),
+    ).rejects.toThrow(RoundError)
+
+    const db = serviceClient()
+    const { data: rounds } = await db.from('rounds').select('*').eq('name', 'Orphan check')
+    expect(rounds).toHaveLength(0)
   })
 
   it('lists rounds newest first with their standings', async () => {

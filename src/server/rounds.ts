@@ -56,6 +56,31 @@ export async function createRound(input: CreateRoundInput): Promise<{ id: string
   const db = serviceDb()
   const code = generateRoundCode()
 
+  // Validate everything against the catalog before the first write, so an
+  // unknown or archived challenge id never leaves an orphaned round behind.
+  const { data: catalog, error: catalogError } = await db
+    .from('challenges')
+    .select('*')
+    .in(
+      'id',
+      input.challenges.map((c) => c.challengeId),
+    )
+  if (catalogError) throw new RoundError('bad_request', catalogError.message)
+
+  const challengeRows = input.challenges.map((choice) => {
+    const source = catalog!.find((c) => c.id === choice.challengeId)
+    if (!source) throw new RoundError('bad_request', `unknown challenge ${choice.challengeId}`)
+    if (source.archived) throw new RoundError('bad_request', `challenge ${source.name} is archived`)
+    return {
+      challenge_id: source.id,
+      name: source.name,
+      points: source.points,
+      scope: source.scope,
+      allow_ties: source.allow_ties,
+      holes: choice.holes,
+    }
+  })
+
   const { data: round, error: roundError } = await db
     .from('rounds')
     .insert({
@@ -74,31 +99,9 @@ export async function createRound(input: CreateRoundInput): Promise<{ id: string
     .insert(input.playerIds.map((playerId) => ({ round_id: round.id, player_id: playerId })))
   if (playersError) throw new RoundError('bad_request', playersError.message)
 
-  const { data: catalog, error: catalogError } = await db
-    .from('challenges')
-    .select('*')
-    .in(
-      'id',
-      input.challenges.map((c) => c.challengeId),
-    )
-  if (catalogError) throw new RoundError('bad_request', catalogError.message)
-
-  const rows = input.challenges.map((choice) => {
-    const source = catalog!.find((c) => c.id === choice.challengeId)
-    if (!source) throw new RoundError('bad_request', `unknown challenge ${choice.challengeId}`)
-    if (source.archived) throw new RoundError('bad_request', `challenge ${source.name} is archived`)
-    return {
-      round_id: round.id,
-      challenge_id: source.id,
-      name: source.name,
-      points: source.points,
-      scope: source.scope,
-      allow_ties: source.allow_ties,
-      holes: choice.holes,
-    }
-  })
-
-  const { error: rcError } = await db.from('round_challenges').insert(rows)
+  const { error: rcError } = await db
+    .from('round_challenges')
+    .insert(challengeRows.map((row) => ({ ...row, round_id: round.id })))
   if (rcError) throw new RoundError('bad_request', rcError.message)
 
   return { id: round.id, code }
@@ -109,14 +112,25 @@ export async function getRoundState(rawCode: string): Promise<RoundState | null>
   if (!isValidRoundCode(code)) return null
 
   const db = serviceDb()
-  const { data: round } = await db.from('rounds').select('*').eq('code', code).maybeSingle()
+  const {
+    data: round,
+    error: roundError,
+  } = await db.from('rounds').select('*').eq('code', code).maybeSingle()
+  if (roundError) throw new RoundError('bad_request', roundError.message)
   if (!round) return null
 
-  const [{ data: rp }, { data: rc }, { data: results }] = await Promise.all([
+  const [
+    { data: rp, error: rpError },
+    { data: rc, error: rcError },
+    { data: results, error: resultsError },
+  ] = await Promise.all([
     db.from('round_players').select('players(id, name, archived)').eq('round_id', round.id),
     db.from('round_challenges').select('*').eq('round_id', round.id),
     db.from('results').select('*').eq('round_id', round.id),
   ])
+  if (rpError) throw new RoundError('bad_request', rpError.message)
+  if (rcError) throw new RoundError('bad_request', rcError.message)
+  if (resultsError) throw new RoundError('bad_request', resultsError.message)
 
   const players: Player[] = (rp ?? [])
     .map((row) => row.players as unknown as Player)
