@@ -8,11 +8,27 @@ describe('i18n dictionary', () => {
     expect(deKeys).toEqual(enKeys)
   })
 
-  it('never spells a German string with ß (Swiss German uses ss)', () => {
+  // Representative arguments for the dictionary's function-valued entries —
+  // the check below calls each one and inspects its *output*, so a template
+  // literal edited later is covered exactly like a plain string is.
+  const functionSamples: Record<string, unknown[]> = {
+    holesForLabel: ['Nächstes Loch'],
+    invalidHoles: ['abc, xyz'],
+    playersCount: [4],
+    clearChallengeOnHole: ['Nächstes Loch'],
+    saveChallenge: ['Nächstes Loch'],
+  }
+
+  it('never spells a German string with ß (Swiss German uses ss), including templated ones', () => {
     const de = getDict('de')
     for (const [key, value] of Object.entries(de)) {
       if (typeof value === 'string') {
         expect(value.includes('ß'), `key "${key}" contains ß: ${value}`).toBe(false)
+      } else if (typeof value === 'function') {
+        const args = functionSamples[key]
+        expect(args, `no sample arguments registered for function key "${key}"`).toBeDefined()
+        const result = (value as (...a: unknown[]) => string)(...args)
+        expect(result.includes('ß'), `key "${key}" contains ß: ${result}`).toBe(false)
       }
     }
   })

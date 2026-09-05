@@ -8,6 +8,7 @@ export type Locale = 'de' | 'en'
 export const LOCALE_COOKIE = 'locale'
 
 const en = {
+  appTitle: 'On-course games',
   appTitleLine1: 'On-course',
   appTitleLine2: 'games',
   newRound: 'New round',
@@ -60,6 +61,7 @@ const en = {
 
 // Swiss written German: 'ss', never 'ß'.
 const de: Dict = {
+  appTitle: 'Platzspiele',
   appTitleLine1: 'Platz-',
   appTitleLine2: 'spiele',
   newRound: 'Neue Runde',
@@ -85,9 +87,9 @@ const de: Dict = {
   hole: 'Loch',
   clearChallengeOnHole: (challengeName: string) => `${challengeName} auf diesem Loch löschen`,
   saveChallenge: (challengeName: string) => `${challengeName} speichern`,
-  couldNotSaveTryAgain: 'Konnte nicht gespeichert werden. Nochmals versuchen.',
+  couldNotSaveTryAgain: 'Runde konnte nicht gespeichert werden. Nochmals versuchen.',
   couldNotFinishTryAgain: 'Runde konnte nicht beendet werden. Nochmals versuchen.',
-  standings: 'Stand',
+  standings: 'Spielstand',
   finishLockWarning: 'Beenden sperrt diese Runde endgültig. Niemand kann danach noch etwas eintragen oder korrigieren.',
   yesFinishRound: 'Ja, Runde beenden',
   keepPlaying: 'Weiterspielen',

@@ -1,8 +1,13 @@
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import './tokens.css'
+import { getDict } from '@/lib/i18n'
 import { getLocale } from '@/lib/server-locale'
 
-export const metadata = { title: 'On-course games' }
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale()
+  return { title: getDict(locale).appTitle }
+}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await getLocale()
