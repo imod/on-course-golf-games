@@ -1,5 +1,6 @@
 import { RoundError, submitResult } from '@/server/rounds'
 import { notifyRoundChanged } from '@/server/realtime'
+import { readJson } from '@/server/http'
 
 type Ctx = { params: Promise<{ code: string }> }
 
@@ -17,7 +18,11 @@ export async function POST(request: Request, { params }: Ctx): Promise<Response>
   const { code } = await params
 
   try {
-    const body = (await request.json()) as { rc?: unknown; hole?: unknown; ranks?: unknown }
+    const parsed = await readJson(request)
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new RoundError('bad_request', 'body must be a JSON object')
+    }
+    const body = parsed as { rc?: unknown; hole?: unknown; ranks?: unknown }
 
     if (typeof body.rc !== 'string') throw new RoundError('bad_request', 'rc is required')
     if (!Array.isArray(body.ranks) || body.ranks.some((id) => typeof id !== 'string')) {

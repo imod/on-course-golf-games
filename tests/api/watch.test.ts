@@ -109,4 +109,28 @@ describe('watch API', () => {
     expect(response.status).toBe(400)
     expect((await response.json()).err).toBeTruthy()
   })
+
+  it('400s a body that is not valid JSON', async () => {
+    const { code } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', { method: 'POST', body: 'not json{' }),
+      ctx(code),
+    )
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.err).toBeTruthy()
+  })
+
+  it('400s a body that is literal null', async () => {
+    const { code } = await fixture()
+    const response = await postResult(
+      new Request('http://test/', { method: 'POST', body: 'null' }),
+      ctx(code),
+    )
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.ok).toBe(false)
+    expect(body.err).toBeTruthy()
+  })
 })
