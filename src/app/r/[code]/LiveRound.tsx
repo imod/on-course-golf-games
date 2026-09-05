@@ -243,7 +243,10 @@ export function LiveRound({ initial }: { initial: RoundState }) {
                   // While editing, the draft is the whole truth for this
                   // challenge and hole — a cell left out of it will be cleared.
                   const shown = editing ? pending : saved
-                  const highlight = shown !== null && shown > 0
+                  // A selected player is highlighted even where the points run
+                  // out (a fourth place in a 3·2·1 game scores 0 but is still
+                  // part of what will be saved).
+                  const highlight = editing ? pending !== null : saved !== null && saved > 0
                   return (
                     <button
                       key={player.id}
