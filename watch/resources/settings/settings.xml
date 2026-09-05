@@ -1,0 +1,28 @@
+<resources xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <!-- Neither value is ever typed on the watch: both are set from the
+         phone (Garmin Connect Mobile / Garmin Express) or, in the
+         simulator, via the settings editor (see watch/README.md). The
+         empty-string defaults mean an unconfigured watch fails obviously
+         (ApiClient treats a missing base URL/token as "not configured")
+         rather than silently calling a placeholder host. -->
+    <properties>
+        <property id="apiBaseUrl" type="string"></property>
+        <property id="watchToken" type="string"></property>
+    </properties>
+
+    <strings>
+        <string id="ApiBaseUrlTitle">API base URL</string>
+        <string id="WatchTokenTitle">Watch token</string>
+    </strings>
+
+    <settings>
+        <setting propertyKey="@Properties.apiBaseUrl" title="@Strings.ApiBaseUrlTitle">
+            <settingConfig type="alphaNumeric" />
+        </setting>
+
+        <setting propertyKey="@Properties.watchToken" title="@Strings.WatchTokenTitle">
+            <settingConfig type="alphaNumeric" />
+        </setting>
+    </settings>
+</resources>

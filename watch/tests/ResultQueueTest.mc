@@ -251,6 +251,43 @@ function resultQueueFailedSaveDoesNotCorruptInMemoryState(logger as Test.Logger)
     return entriesEqual(survivor, kept);
 }
 
+//! copyEntry()/copyRanks() must copy a tie sub-array too, not just the
+//! flat rank list: mutating a tie array after enqueue() must not reach the
+//! queue, and mutating what peek() returns must not reach it either. The
+//! watch sends ties (see Ranking.toRanks), so this nested-array branch of
+//! copyRanks() is live code, not a hypothetical.
+(:test)
+function resultQueueCopiesTieSubArraysOnTheWayInAndOut(logger as Test.Logger) as Boolean {
+    resetResultQueueForTest();
+
+    var tie = ["p2", "p3"] as Array<String>;
+    var original = {
+        "code" => "ABCD",
+        "rc" => "hole-winner",
+        "hole" => 5,
+        "ranks" => ["p1", tie] as Array<Object>
+    };
+    ResultQueue.enqueue(original);
+
+    // Mutate the tie sub-array already passed to enqueue().
+    tie.add("intruder");
+
+    var firstPeek = ResultQueue.peek() as Dictionary;
+    var firstTie = (firstPeek.get("ranks") as Array<Object>)[1] as Array<String>;
+    if (firstTie.size() != 2) {
+        logger.debug("tie after mutating the enqueued sub-array = " + firstTie);
+        return false;
+    }
+
+    // Mutate the tie sub-array inside what peek() just returned.
+    firstTie.add("intruder2");
+
+    var secondPeek = ResultQueue.peek() as Dictionary;
+    var secondTie = (secondPeek.get("ranks") as Array<Object>)[1] as Array<String>;
+    logger.debug("tie after mutating a peeked sub-array = " + secondTie);
+    return secondTie.size() == 2;
+}
+
 //! Same failure handling, but for dropFirst(): a failed save() must leave
 //! the queue exactly as it was before the drop.
 (:test)

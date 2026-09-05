@@ -60,11 +60,19 @@ module ResultQueue {
     //! safe to do from a unit test: on this device it risks a fatal,
     //! uncatchable Out-Of-Memory error instead of the catchable
     //! `Lang.StorageFullException` it's meant to stand in for.
+    //!
+    //! `(:test)`-tagged so it (and the flag check in save()) is compiled
+    //! out of release builds entirely: an always-false flag that some
+    //! future debug code could flip would silently stop the queue
+    //! persisting, which is the one failure this module exists to prevent.
+    (:test)
     var _forceSaveFailureForTest as Boolean = false;
 
     //! Thrown by save() when `_forceSaveFailureForTest` is set, standing in
     //! for a real `Application.Storage` failure such as
-    //! `Lang.StorageFullException`.
+    //! `Lang.StorageFullException`. `(:test)`-tagged for the same reason as
+    //! the flag above — it exists only to be thrown from test code.
+    (:test)
     class ForcedSaveFailure extends Lang.Exception {
         function initialize() {
             Exception.initialize();
@@ -73,9 +81,24 @@ module ResultQueue {
     }
 
     //! Writes the in-memory queue to `Application.Storage`.
+    //!
+    //! The two `has` checks below (not one combined check) are what let
+    //! this function compile in a non-test build even though
+    //! `_forceSaveFailureForTest` and `ForcedSaveFailure` are excluded from
+    //! it: the compiler only treats a reference as conditionally-excludable
+    //! when it is guarded by a `has` check naming that exact symbol — the
+    //! same pattern the SDK itself uses to call an API that may not exist
+    //! on every build/device (e.g. `Communications has
+    //! :registerForPhoneAppMessages`). A single `has :_forceSaveFailureForTest`
+    //! guard around both the flag read and `new ForcedSaveFailure()` was
+    //! tried first and failed to compile in a non-test build with
+    //! "Cannot instantiate object of excluded type" — the `new` expression
+    //! needs its own `has` check on the class itself.
     function save() as Void {
-        if (_forceSaveFailureForTest) {
-            throw new ForcedSaveFailure();
+        if (($.ResultQueue has :_forceSaveFailureForTest) && _forceSaveFailureForTest) {
+            if ($.ResultQueue has :ForcedSaveFailure) {
+                throw new ForcedSaveFailure();
+            }
         }
         Storage.setValue(STORAGE_KEY, _queue as Array<Dictionary>);
     }
