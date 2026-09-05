@@ -7,7 +7,10 @@ export const dynamic = 'force-dynamic'
 
 function leaderOf(standings: { playerId: string; points: number }[]): string | undefined {
   if (standings.length === 0) return undefined
-  return standings.reduce((best, s) => (s.points > best.points ? s : best)).playerId
+  const best = standings.reduce((leader, s) => (s.points > leader.points ? s : leader))
+  // Nobody leads a round where nothing has been scored yet — tinting the
+  // first player would be an invented result.
+  return best.points > 0 ? best.playerId : undefined
 }
 
 export default async function Home() {
