@@ -6,3 +6,5 @@ test-results
 playwright-report
 golf-games-directions.html
 .superpowers
+.vercel
+.env*
