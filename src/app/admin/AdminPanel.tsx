@@ -8,6 +8,38 @@ import type { Challenge, Player } from '@/lib/types'
 
 const KEY = 'golf-admin-password'
 
+export type ParsedPoints = { value: number[] | null; invalid: string[] }
+
+/**
+ * Points, highest place first, as a comma-separated list — same idiom as the
+ * setup screen's hole list. Unlike holes, a partially-bad list is never
+ * trimmed down to the tokens that did parse: dropping just the bad entry
+ * would silently turn e.g. "3, 2, i" into a two-place game instead of the
+ * intended three-place one, which is a different game, not a smaller typo.
+ * So any unparseable token blocks the whole list (value: null) until fixed.
+ */
+export function parsePoints(value: string): ParsedPoints {
+  const tokens = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+
+  if (tokens.length === 0) return { value: null, invalid: [] }
+
+  const valid: number[] = []
+  const invalid: string[] = []
+  for (const token of tokens) {
+    const n = Number(token)
+    if (Number.isInteger(n)) {
+      valid.push(n)
+    } else {
+      invalid.push(token)
+    }
+  }
+
+  return { value: invalid.length === 0 ? valid : null, invalid }
+}
+
 export function AdminPanel({ locale }: { locale: Locale }) {
   const dict = getDict(locale)
   const NETWORK_ERROR_MESSAGE = dict.networkError
@@ -17,6 +49,10 @@ export function AdminPanel({ locale }: { locale: Locale }) {
   const [players, setPlayers] = useState<Player[]>([])
   const [error, setError] = useState<string | null>(null)
   const [networkError, setNetworkError] = useState<string | null>(null)
+  const [newChallengeName, setNewChallengeName] = useState('')
+  const [newChallengePoints, setNewChallengePoints] = useState('')
+  const [newChallengeScope, setNewChallengeScope] = useState<'per_hole' | 'per_round'>('per_hole')
+  const [newChallengeAllowTies, setNewChallengeAllowTies] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(KEY)
@@ -69,6 +105,32 @@ export function AdminPanel({ locale }: { locale: Locale }) {
     await load(password)
   }
 
+  async function addChallenge() {
+    if (!password || newChallengeName.trim() === '') return
+    const points = parsePoints(newChallengePoints).value
+    if (!points || points.length === 0) return
+    try {
+      await fetch('/api/admin/challenges', {
+        method: 'POST',
+        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: newChallengeName.trim(),
+          points,
+          scope: newChallengeScope,
+          allowTies: newChallengeAllowTies,
+        }),
+      })
+    } catch {
+      setNetworkError(NETWORK_ERROR_MESSAGE)
+      return
+    }
+    setNewChallengeName('')
+    setNewChallengePoints('')
+    setNewChallengeScope('per_hole')
+    setNewChallengeAllowTies(false)
+    await load(password)
+  }
+
   async function toggleArchived(challenge: Challenge) {
     if (!password) return
     try {
@@ -98,6 +160,8 @@ export function AdminPanel({ locale }: { locale: Locale }) {
     }
     await load(password)
   }
+
+  const parsedNewChallengePoints = parsePoints(newChallengePoints)
 
   if (!password) {
     return (
@@ -188,6 +252,116 @@ export function AdminPanel({ locale }: { locale: Locale }) {
               </button>
             </div>
           ))}
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void addChallenge()
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}
+          >
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                aria-label={dict.newChallengeNameLabel}
+                placeholder={dict.newChallengeNamePlaceholder}
+                value={newChallengeName}
+                onChange={(event) => setNewChallengeName(event.target.value)}
+                style={{
+                  flexGrow: 1,
+                  height: 48,
+                  padding: '0 12px',
+                  fontSize: 15,
+                  fontFamily: 'var(--sans)',
+                  border: '1.5px solid var(--rule)',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  color: 'var(--ink)',
+                }}
+              />
+              <input
+                aria-label={dict.newChallengePointsLabel}
+                placeholder={dict.newChallengePointsPlaceholder}
+                value={newChallengePoints}
+                onChange={(event) => setNewChallengePoints(event.target.value)}
+                style={{
+                  width: 220,
+                  height: 48,
+                  padding: '0 12px',
+                  fontSize: 15,
+                  fontFamily: 'var(--sans)',
+                  border: '1.5px solid var(--rule)',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  color: 'var(--ink)',
+                }}
+              />
+            </div>
+
+            {parsedNewChallengePoints.invalid.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                {dict.invalidPoints(parsedNewChallengePoints.invalid.join(', '))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {(['per_hole', 'per_round'] as const).map((scope) => {
+                const on = newChallengeScope === scope
+                return (
+                  <button
+                    key={scope}
+                    type="button"
+                    onClick={() => setNewChallengeScope(scope)}
+                    style={{
+                      height: 44,
+                      padding: '0 14px',
+                      borderRadius: 6,
+                      fontSize: 14,
+                      fontFamily: 'var(--sans)',
+                      cursor: 'pointer',
+                      background: on ? 'var(--ink)' : 'transparent',
+                      color: on ? 'var(--paper)' : 'var(--muted)',
+                      border: on ? 'none' : '1.5px solid var(--placeholder)',
+                    }}
+                  >
+                    {scope === 'per_hole' ? dict.perHoleOption : dict.perRoundOption}
+                  </button>
+                )
+              })}
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  minHeight: 44,
+                  fontSize: 14,
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={newChallengeAllowTies}
+                  onChange={(event) => setNewChallengeAllowTies(event.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: 'var(--ink)' }}
+                />
+                {dict.allowTiesLabel}
+              </label>
+            </div>
+
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={
+                newChallengeName.trim() === '' ||
+                !parsedNewChallengePoints.value ||
+                parsedNewChallengePoints.value.length === 0
+              }
+              style={{ height: 48, padding: '0 16px', fontSize: 15, alignSelf: 'flex-start' }}
+            >
+              {dict.addGame}
+            </Button>
+          </form>
         </div>
 
         <div style={{ borderLeft: '1.5px solid var(--ink)', paddingLeft: 40 }}>

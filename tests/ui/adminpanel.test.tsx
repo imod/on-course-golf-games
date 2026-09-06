@@ -96,6 +96,83 @@ describe('AdminPanel', () => {
     expect((init.headers as Record<string, string>)['x-admin-password']).toBe('secret')
     expect(JSON.parse(init.body as string)).toEqual({ id: 'p1', archived: true })
   })
+
+  it('creates a game via the new-game form, posting the right body with the password header', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Nearest to the pin')
+
+    fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
+    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, 1' } })
+    fireEvent.click(screen.getByRole('button', { name: /add game/i }))
+
+    await vi.waitFor(() => {
+      const postCall = vi
+        .mocked(fetch)
+        .mock.calls.find((call) => String(call[0]) === '/api/admin/challenges' && call[1]?.method === 'POST')
+      expect(postCall).toBeDefined()
+    })
+
+    const postCall = vi
+      .mocked(fetch)
+      .mock.calls.find((call) => String(call[0]) === '/api/admin/challenges' && call[1]?.method === 'POST')
+    const init = postCall?.[1] as RequestInit
+    expect((init.headers as Record<string, string>)['x-admin-password']).toBe('secret')
+    expect(JSON.parse(init.body as string)).toEqual({
+      name: 'Fewest putts',
+      points: [3, 2, 1],
+      scope: 'per_hole',
+      allowTies: false,
+    })
+  })
+
+  it('reloads the catalog after creating a game', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Nearest to the pin')
+    const callsBefore = vi.mocked(fetch).mock.calls.length
+
+    fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
+    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, 1' } })
+    fireEvent.click(screen.getByRole('button', { name: /add game/i }))
+
+    await vi.waitFor(() => {
+      expect(vi.mocked(fetch).mock.calls.length).toBeGreaterThan(callsBefore + 1)
+    })
+  })
+
+  it('surfaces unparseable points instead of silently dropping them, and does not submit', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Nearest to the pin')
+    const callsBefore = vi.mocked(fetch).mock.calls.length
+
+    fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
+    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, i' } })
+    fireEvent.click(screen.getByRole('button', { name: /add game/i }))
+
+    expect(await screen.findByText(/not a whole number.*i/i)).toBeDefined()
+    expect(vi.mocked(fetch).mock.calls.length).toBe(callsBefore)
+  })
+
+  it('shows a network error when creating a game fails at the network level, without clearing the stored password', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Nearest to the pin')
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
+    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, 1' } })
+    fireEvent.click(screen.getByRole('button', { name: /add game/i }))
+
+    await screen.findByText(/network/i)
+    expect(window.localStorage.getItem('golf-admin-password')).toBe('secret')
+  })
 })
 
 describe('AdminPanel in German', () => {

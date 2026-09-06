@@ -57,6 +57,16 @@ const en = {
   newPlayerLabel: 'New player name',
   add: 'Add',
 
+  newChallengeNamePlaceholder: 'New game',
+  newChallengeNameLabel: 'Game name',
+  newChallengePointsPlaceholder: 'points, highest first — e.g. 3, 2, 1',
+  newChallengePointsLabel: 'Points, highest first',
+  invalidPoints: (tokens: string) => `Not a whole number, fix before adding: ${tokens}`,
+  perHoleOption: 'Per hole',
+  perRoundOption: 'Per round',
+  allowTiesLabel: 'Allow ties',
+  addGame: 'Add game',
+
   switchLanguage: 'Switch language',
 }
 
@@ -110,6 +120,16 @@ const de: Dict = {
   newPlayerPlaceholder: 'Neuer Spieler',
   newPlayerLabel: 'Name des neuen Spielers',
   add: 'Hinzufügen',
+
+  newChallengeNamePlaceholder: 'Neues Spiel',
+  newChallengeNameLabel: 'Name des Spiels',
+  newChallengePointsPlaceholder: 'Punkte, höchste zuerst — z. B. 3, 2, 1',
+  newChallengePointsLabel: 'Punkte, höchste zuerst',
+  invalidPoints: (tokens: string) => `Keine ganze Zahl, bitte korrigieren: ${tokens}`,
+  perHoleOption: 'Pro Loch',
+  perRoundOption: 'Pro Runde',
+  allowTiesLabel: 'Gleichstände erlauben',
+  addGame: 'Spiel hinzufügen',
 
   switchLanguage: 'Sprache wechseln',
 }
