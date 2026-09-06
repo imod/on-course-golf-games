@@ -16,7 +16,11 @@ export function serviceCredentials(): ServiceCredentials {
   if (!url || !key) {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set')
   }
-  return { url, key }
+  // A trailing slash makes supabase-js build "...supabase.co//rest/v1/...",
+  // which the API rejects with "Invalid path specified in request URL" — an
+  // error that points nowhere near the actual cause. Paste-with-slash is the
+  // normal way to configure this, so tolerate it.
+  return { url: url.replace(/\/+$/, ''), key }
 }
 
 export function serviceDb(): SupabaseClient {
