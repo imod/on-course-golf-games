@@ -23,6 +23,7 @@ export async function GET(_request: Request, { params }: Ctx): Promise<Response>
         n: c.name,
         pts: c.points,
         holes: c.holes,
+        bad: c.badPoints,
       })),
     })
   } catch (error) {

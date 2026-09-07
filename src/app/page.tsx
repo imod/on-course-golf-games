@@ -4,17 +4,10 @@ import { ScoreGrid } from '@/components/ScoreGrid'
 import { buttonStyle } from '@/components/Button'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { formatDate, getDict } from '@/lib/i18n'
+import { bananaOf, leaderOf } from '@/lib/scoring'
 import { getLocale } from '@/lib/server-locale'
 
 export const dynamic = 'force-dynamic'
-
-function leaderOf(standings: { playerId: string; points: number }[]): string | undefined {
-  if (standings.length === 0) return undefined
-  const best = standings.reduce((leader, s) => (s.points > leader.points ? s : leader))
-  // Nobody leads a round where nothing has been scored yet — tinting the
-  // first player would be an invented result.
-  return best.points > 0 ? best.playerId : undefined
-}
 
 export default async function Home() {
   const [rounds, locale] = await Promise.all([listRounds(), getLocale()])
@@ -121,6 +114,28 @@ export default async function Home() {
               standings={round.standings}
               leaderId={leaderOf(round.standings)}
             />
+            {round.hasBadPoints && (
+              <>
+                <div
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                    textTransform: 'uppercase',
+                    color: 'var(--muted)',
+                    borderTop: '1px solid var(--rule)',
+                    padding: '7px 14px 0',
+                  }}
+                >
+                  {dict.badPointsStandings}
+                </div>
+                <ScoreGrid
+                  players={round.players}
+                  standings={round.standings}
+                  total="badPoints"
+                  leaderId={bananaOf(round.standings)}
+                />
+              </>
+            )}
           </Link>
         ))}
       </div>

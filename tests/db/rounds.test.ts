@@ -20,12 +20,14 @@ async function fixture() {
     points: [3, 2, 1],
     scope: 'per_hole',
     allowTies: false,
+    badPoints: false,
   })
   const winner = await createChallenge({
     name: 'Hole winner',
     points: [1],
     scope: 'per_hole',
     allowTies: true,
+    badPoints: false,
   })
   const { code } = await createRound({
     name: 'Breitenloo',
@@ -217,6 +219,56 @@ describe('rounds', () => {
 
   it('refuses to delete an unknown code', async () => {
     await expect(deleteRound('ZZZZZZZZZZ')).rejects.toBeInstanceOf(RoundError)
+  })
+
+  it('copies the bad-points flag onto the round and totals it separately', async () => {
+    const domi = await createPlayer('Domi')
+    const res = await createPlayer('Res')
+    const ntp = await createChallenge({
+      name: 'Nearest to the pin',
+      points: [3, 2, 1],
+      scope: 'per_hole',
+      allowTies: false,
+    })
+    const banana = await createChallenge({
+      name: 'Banana hat',
+      points: [1],
+      scope: 'per_hole',
+      allowTies: true,
+      badPoints: true,
+    })
+    const { code } = await createRound({
+      name: 'Breitenloo',
+      playerIds: [domi.id, res.id],
+      challenges: [
+        { challengeId: ntp.id, holes: null },
+        { challengeId: banana.id, holes: null },
+      ],
+    })
+
+    const state = await getRoundState(code)
+    const goodId = state!.challenges.find((c) => c.name === 'Nearest to the pin')!.id
+    const badId = state!.challenges.find((c) => c.name === 'Banana hat')!.id
+    expect(state!.challenges.find((c) => c.id === badId)!.badPoints).toBe(true)
+    expect(state!.challenges.find((c) => c.id === goodId)!.badPoints).toBe(false)
+
+    await submitResult(code, { roundChallengeId: goodId, hole: 1, placements: [[domi.id], [res.id]] })
+    await submitResult(code, { roundChallengeId: badId, hole: 1, placements: [[domi.id]] })
+    await submitResult(code, { roundChallengeId: badId, hole: 2, placements: [[domi.id]] })
+
+    const after = await getRoundState(code)
+    expect(after!.standings).toEqual(
+      expect.arrayContaining([
+        { playerId: domi.id, points: 3, badPoints: 2 },
+        { playerId: res.id, points: 2, badPoints: 0 },
+      ]),
+    )
+  })
+
+  it('reports which listed rounds have a bad-point game', async () => {
+    const { code } = await fixture()
+    const summaries = await listRounds()
+    expect(summaries.find((s) => s.code === code)!.hasBadPoints).toBe(false)
   })
 
 })

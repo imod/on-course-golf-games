@@ -8,6 +8,8 @@ export type Challenge = {
   points: number[]
   scope: ChallengeScope
   allowTies: boolean
+  /** Counts towards the round's separate bad-points total, where least wins. */
+  badPoints: boolean
   archived: boolean
 }
 
@@ -23,6 +25,7 @@ export type RoundChallenge = {
   points: number[]
   scope: ChallengeScope
   allowTies: boolean
+  badPoints: boolean
   holes: number[] | null
 }
 
@@ -37,6 +40,7 @@ export type ResultEntry = {
 export type Standing = {
   playerId: string
   points: number
+  badPoints: number
 }
 
 export type RoundState = {

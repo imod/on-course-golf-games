@@ -1,6 +1,6 @@
 import { serviceDb } from './db'
 import { generateRoundCode, isValidRoundCode, normalizeRoundCode } from '@/lib/codes'
-import { resolvePoints } from '@/lib/scoring'
+import { resolvePoints, standingsFor } from '@/lib/scoring'
 import type {
   Player,
   ResultEntry,
@@ -43,6 +43,8 @@ export type RoundSummary = {
   status: RoundStatus
   players: Player[]
   standings: Standing[]
+  /** Whether the round has any bad-point game, and so a second scoreboard. */
+  hasBadPoints: boolean
 }
 
 export async function createRound(input: CreateRoundInput): Promise<{ id: string; code: string }> {
@@ -77,6 +79,7 @@ export async function createRound(input: CreateRoundInput): Promise<{ id: string
       points: source.points,
       scope: source.scope,
       allow_ties: source.allow_ties,
+      bad_points: source.bad_points,
       holes: choice.holes,
     }
   })
@@ -142,6 +145,7 @@ export async function getRoundState(rawCode: string): Promise<RoundState | null>
     points: row.points,
     scope: row.scope,
     allowTies: row.allow_ties,
+    badPoints: row.bad_points,
     holes: row.holes,
   }))
 
@@ -163,16 +167,8 @@ export async function getRoundState(rawCode: string): Promise<RoundState | null>
     players,
     challenges,
     results: entries,
-    standings: standingsFor(players, entries),
+    standings: standingsFor(players, entries, challenges),
   }
-}
-
-function standingsFor(players: Player[], results: ResultEntry[]): Standing[] {
-  const totals = new Map<string, number>(players.map((p) => [p.id, 0]))
-  for (const result of results) {
-    totals.set(result.playerId, (totals.get(result.playerId) ?? 0) + result.points)
-  }
-  return players.map((p) => ({ playerId: p.id, points: totals.get(p.id) ?? 0 }))
 }
 
 export async function submitResult(
@@ -311,6 +307,7 @@ export async function listRounds(limit = 25): Promise<RoundSummary[]> {
       status: state.status,
       players: state.players,
       standings: state.standings,
+      hasBadPoints: state.challenges.some((challenge) => challenge.badPoints),
     })
   }
   return summaries

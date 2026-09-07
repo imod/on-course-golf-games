@@ -18,6 +18,7 @@ const challenges = [
     points: [3, 2, 1],
     scope: 'per_hole' as const,
     allowTies: false,
+    badPoints: false,
     archived: false,
   },
 ]

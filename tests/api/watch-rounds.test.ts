@@ -13,6 +13,7 @@ async function makeRound(name: string) {
     points: [1],
     scope: 'per_hole',
     allowTies: false,
+    badPoints: false,
   })
   return createRound({
     name,

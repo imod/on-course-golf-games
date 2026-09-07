@@ -7,6 +7,7 @@ import { Button } from '@/components/Button'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { BackLink } from '@/components/BackLink'
 import { formatDate, getDict, type Locale } from '@/lib/i18n'
+import { bananaOf } from '@/lib/scoring'
 import type { RoundState } from '@/lib/types'
 
 /**
@@ -384,6 +385,28 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
           {dict.standings}
         </div>
         <ScoreGrid players={state.players} standings={state.standings} />
+
+        {state.challenges.some((challenge) => challenge.badPoints) && (
+          <>
+            <div
+              style={{
+                fontSize: 12,
+                letterSpacing: 1.4,
+                textTransform: 'uppercase',
+                color: 'var(--muted)',
+                margin: '14px 0 8px',
+              }}
+            >
+              {dict.badPointsStandings}
+            </div>
+            <ScoreGrid
+              players={state.players}
+              standings={state.standings}
+              total="badPoints"
+              leaderId={bananaOf(state.standings)}
+            />
+          </>
+        )}
       </div>
 
       {!readOnly &&

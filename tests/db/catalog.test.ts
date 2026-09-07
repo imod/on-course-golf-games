@@ -18,6 +18,7 @@ describe('catalog', () => {
       points: [3, 2, 1],
       scope: 'per_hole',
       allowTies: false,
+      badPoints: false,
     })
     expect(created.id).toBeTruthy()
     expect(created.points).toEqual([3, 2, 1])
@@ -32,6 +33,7 @@ describe('catalog', () => {
       points: [1],
       scope: 'per_round',
       allowTies: false,
+      badPoints: false,
     })
     await updateChallenge(created.id, { archived: true })
 

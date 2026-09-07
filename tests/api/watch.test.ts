@@ -16,12 +16,14 @@ async function fixture() {
     points: [3, 2, 1],
     scope: 'per_hole',
     allowTies: false,
+    badPoints: false,
   })
   const ties = await createChallenge({
     name: 'Ties',
     points: [3, 2, 1],
     scope: 'per_hole',
     allowTies: true,
+    badPoints: false,
   })
   const { code } = await createRound({
     name: 'Breitenloo',

@@ -57,6 +57,7 @@ export function AdminPanel({ locale }: { locale: Locale }) {
   const [newChallengePoints, setNewChallengePoints] = useState('')
   const [newChallengeScope, setNewChallengeScope] = useState<'per_hole' | 'per_round'>('per_hole')
   const [newChallengeAllowTies, setNewChallengeAllowTies] = useState(false)
+  const [newChallengeBadPoints, setNewChallengeBadPoints] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(KEY)
@@ -124,6 +125,7 @@ export function AdminPanel({ locale }: { locale: Locale }) {
           points,
           scope: newChallengeScope,
           allowTies: newChallengeAllowTies,
+          badPoints: newChallengeBadPoints,
         }),
       })
     } catch {
@@ -134,6 +136,7 @@ export function AdminPanel({ locale }: { locale: Locale }) {
     setNewChallengePoints('')
     setNewChallengeScope('per_hole')
     setNewChallengeAllowTies(false)
+    setNewChallengeBadPoints(false)
     await load(password)
   }
 
@@ -259,6 +262,21 @@ export function AdminPanel({ locale }: { locale: Locale }) {
               <div style={{ fontSize: 15, color: 'var(--muted)' }}>
                 {challenge.scope === 'per_hole' ? dict.perHole : dict.perRound}
               </div>
+              {challenge.badPoints && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    letterSpacing: 0.8,
+                    textTransform: 'uppercase',
+                    border: '1px solid var(--rule)',
+                    borderRadius: 999,
+                    padding: '3px 9px',
+                    color: 'var(--muted)',
+                  }}
+                >
+                  {dict.badPointsMarker}
+                </div>
+              )}
               <div style={{ fontSize: 15 }}>{challenge.points.join(' · ')}</div>
               <button
                 onClick={() => void toggleArchived(challenge)}
@@ -372,6 +390,26 @@ export function AdminPanel({ locale }: { locale: Locale }) {
                   style={{ width: 18, height: 18, accentColor: 'var(--ink)' }}
                 />
                 {dict.allowTiesLabel}
+              </label>
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  minHeight: 44,
+                  fontSize: 14,
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={newChallengeBadPoints}
+                  onChange={(event) => setNewChallengeBadPoints(event.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: 'var(--ink)' }}
+                />
+                {dict.badPointsLabel}
               </label>
             </div>
 

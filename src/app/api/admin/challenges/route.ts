@@ -30,6 +30,13 @@ function validateAllowTies(allowTies: unknown): boolean {
   return allowTies ?? false
 }
 
+function validateBadPoints(badPoints: unknown): boolean {
+  if (badPoints !== undefined && typeof badPoints !== 'boolean') {
+    throw new RoundError('bad_request', 'badPoints must be a boolean')
+  }
+  return badPoints ?? false
+}
+
 function parseInput(raw: unknown): ChallengeInput {
   const body = raw as Partial<ChallengeInput>
   if (typeof body?.name !== 'string' || body.name.trim() === '') {
@@ -45,6 +52,7 @@ function parseInput(raw: unknown): ChallengeInput {
     // Optional, but type-checked when present — POST and PATCH must agree on
     // what a valid body for this resource looks like.
     allowTies: validateAllowTies(body.allowTies),
+    badPoints: validateBadPoints(body.badPoints),
   }
 }
 
@@ -73,6 +81,9 @@ function parsePatch(raw: unknown): Partial<ChallengeInput> {
   }
   if (body.allowTies !== undefined) {
     patch.allowTies = validateAllowTies(body.allowTies)
+  }
+  if (body.badPoints !== undefined) {
+    patch.badPoints = validateBadPoints(body.badPoints)
   }
   if (body.archived !== undefined) {
     if (typeof body.archived !== 'boolean') {

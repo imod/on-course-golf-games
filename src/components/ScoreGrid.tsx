@@ -4,16 +4,24 @@ export function initials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
+/**
+ * One column per player. `total` picks which of the two independent totals
+ * is shown — the normal one, or the bad points, which are never mixed into
+ * it. The caller decides who leads, because the two totals disagree about
+ * what leading means: most points, fewest bad ones.
+ */
 export function ScoreGrid({
   players,
   standings,
   leaderId,
+  total = 'points',
 }: {
   players: Player[]
   standings: Standing[]
   leaderId?: string
+  total?: 'points' | 'badPoints'
 }) {
-  const points = new Map(standings.map((s) => [s.playerId, s.points]))
+  const points = new Map(standings.map((s) => [s.playerId, s[total]]))
 
   return (
     <div

@@ -40,6 +40,7 @@ const en = {
   couldNotFinishTryAgain: 'Could not finish the round. Try again.',
   tiesNotAllowed: (challengeName: string) => `Ties are not allowed for ${challengeName}.`,
   standings: 'Standings',
+  badPointsStandings: 'Bad points — low wins',
   finishLockWarning: 'Finishing locks this round. Nobody can add or correct a result afterwards.',
   yesFinishRound: 'Yes, finish round',
   keepPlaying: 'Keep playing',
@@ -67,6 +68,8 @@ const en = {
   perHoleOption: 'Per hole',
   perRoundOption: 'Per round',
   allowTiesLabel: 'Allow ties',
+  badPointsLabel: 'Bad points',
+  badPointsMarker: 'bad',
   addGame: 'Add game',
 
   roundsHeading: 'Rounds',
@@ -114,6 +117,7 @@ const de: Dict = {
   couldNotFinishTryAgain: 'Runde konnte nicht beendet werden. Nochmals versuchen.',
   tiesNotAllowed: (challengeName: string) => `Bei ${challengeName} sind keine Gleichstände möglich.`,
   standings: 'Spielstand',
+  badPointsStandings: 'Minuspunkte — wenig gewinnt',
   finishLockWarning: 'Beenden sperrt diese Runde endgültig. Niemand kann danach noch etwas eintragen oder korrigieren.',
   yesFinishRound: 'Ja, Runde beenden',
   keepPlaying: 'Weiterspielen',
@@ -141,6 +145,8 @@ const de: Dict = {
   perHoleOption: 'Pro Loch',
   perRoundOption: 'Pro Runde',
   allowTiesLabel: 'Gleichstände erlauben',
+  badPointsLabel: 'Minuspunkte',
+  badPointsMarker: 'minus',
   addGame: 'Spiel hinzufügen',
 
   roundsHeading: 'Runden',

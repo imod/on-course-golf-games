@@ -49,6 +49,7 @@ describe('admin API', () => {
       points: [1],
       scope: 'per_round',
       allowTies: false,
+      badPoints: false,
     })
     const response = await patchChallenge(authed({ id: challenge.id, archived: true }, 'PATCH'))
     expect(response.status).toBe(200)
@@ -61,6 +62,7 @@ describe('admin API', () => {
       points: [1],
       scope: 'per_hole',
       allowTies: false,
+      badPoints: false,
     })
     const response = await patchChallenge(authed({ id: challenge.id, scope: 'bogus' }, 'PATCH'))
     expect(response.status).toBe(400)
@@ -72,6 +74,7 @@ describe('admin API', () => {
       points: [1],
       scope: 'per_hole',
       allowTies: false,
+      badPoints: false,
     })
     const response = await patchChallenge(authed({ id: challenge.id, points: 'nope' }, 'PATCH'))
     expect(response.status).toBe(400)
@@ -93,6 +96,7 @@ describe('admin API', () => {
       points: [1],
       scope: 'per_hole',
       allowTies: false,
+      badPoints: false,
     })
     const response = await patchChallenge(
       authed({ id: challenge.id, points: [Number.NaN] }, 'PATCH'),
@@ -128,6 +132,7 @@ describe('admin API', () => {
       points: [3, 2, 1],
       scope: 'per_hole',
       allowTies: false,
+      badPoints: false,
     })
 
     const response = await postRound(
@@ -146,4 +151,24 @@ describe('admin API', () => {
     const response = await postRound(authed({ name: 'Empty', playerIds: [], challenges: [] }))
     expect(response.status).toBe(400)
   })
+  it('creates a bad-point game and rejects a non-boolean flag', async () => {
+    const created = await postChallenge(
+      authed({ name: 'Banana hat', points: [1], scope: 'per_hole', allowTies: true, badPoints: true }),
+    )
+    expect(created.status).toBe(200)
+    expect((await created.json()).badPoints).toBe(true)
+
+    const refused = await postChallenge(
+      authed({ name: 'Nope', points: [1], scope: 'per_hole', badPoints: 'yes' }),
+    )
+    expect(refused.status).toBe(400)
+  })
+
+  it('defaults a game to normal points when the flag is absent', async () => {
+    const created = await postChallenge(
+      authed({ name: 'Hole winner', points: [1], scope: 'per_hole' }),
+    )
+    expect((await created.json()).badPoints).toBe(false)
+  })
+
 })

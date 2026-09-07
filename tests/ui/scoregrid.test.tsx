@@ -9,7 +9,7 @@ const players = [
 
 describe('ScoreGrid', () => {
   it('shows one column per player with their total', () => {
-    render(<ScoreGrid players={players} standings={[{ playerId: 'a', points: 11 }, { playerId: 'b', points: 14 }]} />)
+    render(<ScoreGrid players={players} standings={[{ playerId: 'a', points: 11, badPoints: 0 }, { playerId: 'b', points: 14, badPoints: 0 }]} />)
     expect(screen.getByText('DO')).toBeDefined()
     expect(screen.getByText('SÄ')).toBeDefined()
     expect(screen.getByText('11')).toBeDefined()
@@ -20,7 +20,7 @@ describe('ScoreGrid', () => {
     render(
       <ScoreGrid
         players={players}
-        standings={[{ playerId: 'a', points: 11 }, { playerId: 'b', points: 14 }]}
+        standings={[{ playerId: 'a', points: 11, badPoints: 0 }, { playerId: 'b', points: 14, badPoints: 0 }]}
         leaderId="b"
       />,
     )
@@ -29,7 +29,24 @@ describe('ScoreGrid', () => {
   })
 
   it('shows zero for a player with no results', () => {
-    render(<ScoreGrid players={players} standings={[{ playerId: 'a', points: 3 }]} />)
+    render(<ScoreGrid players={players} standings={[{ playerId: 'a', points: 3, badPoints: 0 }]} />)
     expect(screen.getByTestId('column-b').textContent).toContain('0')
+  })
+
+  it('shows the bad-point total instead when asked for it', () => {
+    render(
+      <ScoreGrid
+        players={players}
+        standings={[
+          { playerId: 'a', points: 11, badPoints: 2 },
+          { playerId: 'b', points: 14, badPoints: 0 },
+        ]}
+        total="badPoints"
+        leaderId="b"
+      />,
+    )
+    expect(screen.getByText('2')).toBeDefined()
+    expect(screen.queryByText('11')).toBeNull()
+    expect(screen.getByTestId('column-b').getAttribute('data-leader')).toBe('true')
   })
 })

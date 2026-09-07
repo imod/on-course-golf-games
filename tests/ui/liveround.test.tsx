@@ -26,12 +26,12 @@ const initial: RoundState = {
     { id: 'p2', name: 'Res', archived: false },
   ],
   challenges: [
-    { id: 'c1', name: 'Nearest pin', points: [3, 2, 1], scope: 'per_hole', allowTies: false, holes: null },
+    { id: 'c1', name: 'Nearest pin', points: [3, 2, 1], scope: 'per_hole', allowTies: false, badPoints: false, holes: null },
   ],
   results: [],
   standings: [
-    { playerId: 'p1', points: 0 },
-    { playerId: 'p2', points: 0 },
+    { playerId: 'p1', points: 0, badPoints: 0 },
+    { playerId: 'p2', points: 0, badPoints: 0 },
   ],
 }
 
@@ -40,8 +40,8 @@ const withSaved: RoundState = {
   ...initial,
   results: [{ roundChallengeId: 'c1', hole: 1, playerId: 'p1', rank: 1, points: 3 }],
   standings: [
-    { playerId: 'p1', points: 3 },
-    { playerId: 'p2', points: 0 },
+    { playerId: 'p1', points: 3, badPoints: 0 },
+    { playerId: 'p2', points: 0, badPoints: 0 },
   ],
 }
 
@@ -50,7 +50,7 @@ const tieAllowedRound: RoundState = {
   ...initial,
   challenges: [
     ...initial.challenges,
-    { id: 'c2', name: 'Fewest putts', points: [2, 1], scope: 'per_hole', allowTies: true, holes: null },
+    { id: 'c2', name: 'Fewest putts', points: [2, 1], scope: 'per_hole', allowTies: true, badPoints: false, holes: null },
   ],
 }
 
@@ -64,8 +64,8 @@ describe('LiveRound', () => {
             ...initial,
             results: [{ roundChallengeId: 'c1', hole: 1, playerId: 'p1', rank: 1, points: 3 }],
             standings: [
-              { playerId: 'p1', points: 3 },
-              { playerId: 'p2', points: 0 },
+              { playerId: 'p1', points: 3, badPoints: 0 },
+              { playerId: 'p2', points: 0, badPoints: 0 },
             ],
           }),
           { status: 200 },
@@ -318,6 +318,38 @@ describe('LiveRound in German', () => {
 
     render(<LiveRound initial={{ ...initial, status: 'finished' }} locale="en" />)
     expect(screen.getByRole('link', { name: /all rounds/i }).getAttribute('href')).toBe('/')
+  })
+
+  it('shows a second scoreboard only when the round has a bad-point game', () => {
+    const { unmount } = render(<LiveRound initial={initial} locale="en" />)
+    expect(screen.queryByText(/bad points/i)).toBeNull()
+    unmount()
+
+    const withBanana: RoundState = {
+      ...initial,
+      challenges: [
+        ...initial.challenges,
+        {
+          id: 'c9',
+          name: 'Banana hat',
+          points: [1],
+          scope: 'per_hole',
+          allowTies: true,
+          badPoints: true,
+          holes: null,
+        },
+      ],
+      standings: [
+        { playerId: 'p1', points: 3, badPoints: 2 },
+        { playerId: 'p2', points: 0, badPoints: 0 },
+      ],
+    }
+
+    render(<LiveRound initial={withBanana} locale="en" />)
+    expect(screen.getByText(/bad points/i)).toBeDefined()
+    // Fewest bad points leads that board, which is the player on zero.
+    const boards = screen.getAllByTestId('column-p2')
+    expect(boards[boards.length - 1].getAttribute('data-leader')).toBe('true')
   })
 
 })

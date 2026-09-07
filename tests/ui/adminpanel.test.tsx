@@ -16,6 +16,7 @@ const CHALLENGES = [
     points: [3, 2, 1],
     scope: 'per_hole',
     allowTies: false,
+    badPoints: false,
     archived: false,
   },
 ]
@@ -28,7 +29,7 @@ const ROUNDS = [
     playedOn: '2026-09-12',
     status: 'open',
     players: PLAYERS,
-    standings: [{ playerId: 'p1', points: 3 }],
+    standings: [{ playerId: 'p1', points: 3, badPoints: 0 }],
   },
 ]
 
@@ -118,7 +119,7 @@ describe('AdminPanel', () => {
     await screen.findByText('Nearest to the pin')
 
     fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
-    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, 1' } })
+    fireEvent.change(screen.getByLabelText(/points, highest first/i), { target: { value: '3, 2, 1' } })
     fireEvent.click(screen.getByRole('button', { name: /add game/i }))
 
     await vi.waitFor(() => {
@@ -138,6 +139,7 @@ describe('AdminPanel', () => {
       points: [3, 2, 1],
       scope: 'per_hole',
       allowTies: false,
+      badPoints: false,
     })
   })
 
@@ -149,7 +151,7 @@ describe('AdminPanel', () => {
     const callsBefore = vi.mocked(fetch).mock.calls.length
 
     fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
-    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, 1' } })
+    fireEvent.change(screen.getByLabelText(/points, highest first/i), { target: { value: '3, 2, 1' } })
     fireEvent.click(screen.getByRole('button', { name: /add game/i }))
 
     await vi.waitFor(() => {
@@ -165,7 +167,7 @@ describe('AdminPanel', () => {
     const callsBefore = vi.mocked(fetch).mock.calls.length
 
     fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
-    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, i' } })
+    fireEvent.change(screen.getByLabelText(/points, highest first/i), { target: { value: '3, 2, i' } })
     fireEvent.click(screen.getByRole('button', { name: /add game/i }))
 
     expect(await screen.findByText(/not a whole number.*i/i)).toBeDefined()
@@ -181,7 +183,7 @@ describe('AdminPanel', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
     fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Fewest putts' } })
-    fireEvent.change(screen.getByLabelText(/points/i), { target: { value: '3, 2, 1' } })
+    fireEvent.change(screen.getByLabelText(/points, highest first/i), { target: { value: '3, 2, 1' } })
     fireEvent.click(screen.getByRole('button', { name: /add game/i }))
 
     await screen.findByText(/network/i)
@@ -235,6 +237,33 @@ describe('AdminPanel', () => {
     const back = await screen.findByRole('link', { name: /all rounds/i })
     expect(back.getAttribute('href')).toBe('/')
   })
+  it('sends the bad-points flag when the new game is ticked as bad', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Nearest to the pin')
+    fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Banana hat' } })
+    fireEvent.change(screen.getByLabelText(/points, highest first/i), { target: { value: '1' } })
+    fireEvent.click(screen.getByLabelText(/bad points/i))
+    fireEvent.click(screen.getByRole('button', { name: /add game/i }))
+
+    await vi.waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/admin/challenges',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Banana hat',
+            points: [1],
+            scope: 'per_hole',
+            allowTies: false,
+            badPoints: true,
+          }),
+        }),
+      ),
+    )
+  })
+
 })
 
 describe('AdminPanel in German', () => {

@@ -7,6 +7,7 @@ export type ChallengeInput = {
   points: number[]
   scope: ChallengeScope
   allowTies: boolean
+  badPoints?: boolean
   archived?: boolean
 }
 
@@ -17,6 +18,7 @@ type ChallengeRow = {
   points: number[]
   scope: ChallengeScope
   allow_ties: boolean
+  bad_points: boolean
   archived: boolean
 }
 
@@ -30,6 +32,7 @@ function toChallenge(row: ChallengeRow): Challenge {
     points: row.points,
     scope: row.scope,
     allowTies: row.allow_ties,
+    badPoints: row.bad_points,
     archived: row.archived,
   }
 }
@@ -56,6 +59,7 @@ export async function createChallenge(input: ChallengeInput): Promise<Challenge>
       points: input.points,
       scope: input.scope,
       allow_ties: input.allowTies,
+      bad_points: input.badPoints ?? false,
       archived: input.archived ?? false,
     })
     .select()
@@ -75,6 +79,7 @@ export async function updateChallenge(
   if (input.points !== undefined) patch.points = input.points
   if (input.scope !== undefined) patch.scope = input.scope
   if (input.allowTies !== undefined) patch.allow_ties = input.allowTies
+  if (input.badPoints !== undefined) patch.bad_points = input.badPoints
   if (input.archived !== undefined) patch.archived = input.archived
 
   const { data, error } = await serviceDb()
