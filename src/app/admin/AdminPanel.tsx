@@ -97,77 +97,69 @@ export function AdminPanel({ locale }: { locale: Locale }) {
     if (password) void load(password)
   }, [password, load])
 
-  async function addPlayer(name: string) {
-    if (!password || name.trim() === '') return
+  /**
+   * Sends one admin write. A rejected write is reported rather than swallowed:
+   * reloading after a failure shows the unchanged catalog, which is
+   * indistinguishable from the button doing nothing at all.
+   */
+  async function write(url: string, method: 'POST' | 'PATCH', body: unknown): Promise<boolean> {
+    if (!password) return false
     try {
-      await fetch('/api/admin/players', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'x-admin-password': password, 'content-type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify(body),
       })
+      if (!response.ok) {
+        setNetworkError(dict.couldNotSaveTryAgain)
+        return false
+      }
     } catch {
       setNetworkError(NETWORK_ERROR_MESSAGE)
-      return
+      return false
     }
+    setNetworkError(null)
     await load(password)
+    return true
+  }
+
+  async function addPlayer(name: string) {
+    if (name.trim() === '') return
+    await write('/api/admin/players', 'POST', { name: name.trim() })
   }
 
   async function addChallenge() {
-    if (!password || newChallengeName.trim() === '') return
+    if (newChallengeName.trim() === '') return
     const points = parsePoints(newChallengePoints).value
     if (!points || points.length === 0) return
-    try {
-      await fetch('/api/admin/challenges', {
-        method: 'POST',
-        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          name: newChallengeName.trim(),
-          points,
-          scope: newChallengeScope,
-          allowTies: newChallengeAllowTies,
-          badPoints: newChallengeBadPoints,
-        }),
-      })
-    } catch {
-      setNetworkError(NETWORK_ERROR_MESSAGE)
-      return
-    }
+
+    const created = await write('/api/admin/challenges', 'POST', {
+      name: newChallengeName.trim(),
+      points,
+      scope: newChallengeScope,
+      allowTies: newChallengeAllowTies,
+      badPoints: newChallengeBadPoints,
+    })
+    // The form is only emptied once the game really exists; otherwise what
+    // was typed would have to be remembered and retyped.
+    if (!created) return
+
     setNewChallengeName('')
     setNewChallengePoints('')
     setNewChallengeScope('per_hole')
     setNewChallengeAllowTies(false)
     setNewChallengeBadPoints(false)
-    await load(password)
   }
 
   async function toggleArchived(challenge: Challenge) {
-    if (!password) return
-    try {
-      await fetch('/api/admin/challenges', {
-        method: 'PATCH',
-        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
-        body: JSON.stringify({ id: challenge.id, archived: !challenge.archived }),
-      })
-    } catch {
-      setNetworkError(NETWORK_ERROR_MESSAGE)
-      return
-    }
-    await load(password)
+    await write('/api/admin/challenges', 'PATCH', {
+      id: challenge.id,
+      archived: !challenge.archived,
+    })
   }
 
   async function togglePlayerArchived(player: Player) {
-    if (!password) return
-    try {
-      await fetch('/api/admin/players', {
-        method: 'PATCH',
-        headers: { 'x-admin-password': password, 'content-type': 'application/json' },
-        body: JSON.stringify({ id: player.id, archived: !player.archived }),
-      })
-    } catch {
-      setNetworkError(NETWORK_ERROR_MESSAGE)
-      return
-    }
-    await load(password)
+    await write('/api/admin/players', 'PATCH', { id: player.id, archived: !player.archived })
   }
 
   async function deleteRound(code: string) {

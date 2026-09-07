@@ -264,6 +264,36 @@ describe('AdminPanel', () => {
     )
   })
 
+  it('surfaces a rejected create instead of silently clearing the form', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+    await screen.findByText('Nearest to the pin')
+
+    // The server rejects the write — here because the column is missing, but
+    // any 4xx/5xx looks the same to the panel.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) =>
+        Promise.resolve(
+          init?.method === 'POST'
+            ? new Response(JSON.stringify({ error: 'internal error' }), { status: 500 })
+            : new Response(JSON.stringify(bodyFor(String(url))), { status: 200 }),
+        ),
+      ),
+    )
+
+    fireEvent.change(screen.getByLabelText(/game name/i), { target: { value: 'Banana hat' } })
+    fireEvent.change(screen.getByLabelText(/points, highest first/i), { target: { value: '1' } })
+    fireEvent.click(screen.getByLabelText(/bad points/i))
+    fireEvent.click(screen.getByRole('button', { name: /add game/i }))
+
+    await screen.findByRole('alert')
+    // What was typed survives, so the game can be added again once the
+    // server is fixed rather than being retyped from memory.
+    expect((screen.getByLabelText(/game name/i) as HTMLInputElement).value).toBe('Banana hat')
+    expect((screen.getByLabelText(/bad points/i) as HTMLInputElement).checked).toBe(true)
+  })
+
 })
 
 describe('AdminPanel in German', () => {
