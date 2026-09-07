@@ -1,4 +1,4 @@
-import { createRound, RoundError, type CreateRoundInput } from '@/server/rounds'
+import { createRound, listRounds, RoundError, type CreateRoundInput } from '@/server/rounds'
 import { requireAdmin, AdminError, adminErrorResponse } from '@/server/admin-auth'
 import { errorResponse, readJson } from '@/server/http'
 
@@ -19,6 +19,17 @@ function parseInput(raw: unknown): CreateRoundInput {
     holeCount: typeof body.holeCount === 'number' ? body.holeCount : undefined,
     playerIds: body.playerIds,
     challenges: body.challenges,
+  }
+}
+
+/** Admin-only listing behind the same password as round creation. */
+export async function GET(request: Request): Promise<Response> {
+  try {
+    requireAdmin(request)
+    return Response.json(await listRounds())
+  } catch (error) {
+    if (error instanceof AdminError) return adminErrorResponse()
+    return errorResponse(error)
   }
 }
 

@@ -1,6 +1,7 @@
 import { listChallenges, listPlayers } from '@/server/catalog'
 import { SetupForm } from './SetupForm'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { BackLink } from '@/components/BackLink'
 import { getDict } from '@/lib/i18n'
 import { getLocale } from '@/lib/server-locale'
 
@@ -16,6 +17,7 @@ export default async function SetupPage() {
 
   return (
     <main style={{ maxWidth: 430, margin: '0 auto', padding: '24px 20px 32px' }}>
+      <BackLink locale={locale} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <h1 style={{ fontFamily: 'var(--serif)', fontSize: 34, lineHeight: 1.05, margin: '0 0 18px' }}>
           {dict.newRound}

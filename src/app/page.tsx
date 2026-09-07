@@ -28,7 +28,26 @@ export default async function Home() {
           <br />
           {dict.appTitleLine2}
         </h1>
-        <LanguageToggle locale={locale} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Link
+            href="/admin"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: 44,
+              padding: '0 12px',
+              border: '1px solid var(--rule)',
+              borderRadius: 6,
+              color: 'var(--muted)',
+              textDecoration: 'none',
+              fontSize: 12,
+              letterSpacing: 0.8,
+            }}
+          >
+            {dict.admin}
+          </Link>
+          <LanguageToggle locale={locale} />
+        </div>
       </div>
 
       <Link

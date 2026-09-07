@@ -5,6 +5,7 @@ import { browserClient } from '@/lib/supabase-browser'
 import { initials, ScoreGrid } from '@/components/ScoreGrid'
 import { Button } from '@/components/Button'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { BackLink } from '@/components/BackLink'
 import { formatDate, getDict, type Locale } from '@/lib/i18n'
 import type { RoundState } from '@/lib/types'
 
@@ -204,6 +205,7 @@ export function LiveRound({ initial, locale }: { initial: RoundState; locale: Lo
 
   return (
     <div style={{ maxWidth: 430, margin: '0 auto', padding: '22px 20px 24px' }}>
+      <BackLink locale={locale} />
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontFamily: 'var(--serif)', fontSize: 30, lineHeight: 1.05 }}>{state.name}</div>

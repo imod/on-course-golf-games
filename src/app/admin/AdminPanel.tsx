@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/Button'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { getDict, type Locale } from '@/lib/i18n'
+import { formatDate, getDict, type Locale } from '@/lib/i18n'
+import { BackLink } from '@/components/BackLink'
 import type { Challenge, Player } from '@/lib/types'
+import type { RoundSummary } from '@/server/rounds'
 
 const KEY = 'golf-admin-password'
 
@@ -47,6 +49,8 @@ export function AdminPanel({ locale }: { locale: Locale }) {
   const [typed, setTyped] = useState('')
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [players, setPlayers] = useState<Player[]>([])
+  const [rounds, setRounds] = useState<RoundSummary[]>([])
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [networkError, setNetworkError] = useState<string | null>(null)
   const [newChallengeName, setNewChallengeName] = useState('')
@@ -62,12 +66,13 @@ export function AdminPanel({ locale }: { locale: Locale }) {
   const load = useCallback(async (secret: string) => {
     const headers = { 'x-admin-password': secret, 'content-type': 'application/json' }
     try {
-      const [c, p] = await Promise.all([
+      const [c, p, r] = await Promise.all([
         fetch('/api/admin/challenges?archived=true', { headers }),
         fetch('/api/admin/players?archived=true', { headers }),
+        fetch('/api/rounds', { headers }),
       ])
 
-      if (!c.ok || !p.ok) {
+      if (!c.ok || !p.ok || !r.ok) {
         setError(dict.wrongPassword)
         setPassword(null)
         window.localStorage.removeItem(KEY)
@@ -78,6 +83,7 @@ export function AdminPanel({ locale }: { locale: Locale }) {
       setNetworkError(null)
       setChallenges((await c.json()) as Challenge[])
       setPlayers((await p.json()) as Player[])
+      setRounds((await r.json()) as RoundSummary[])
     } catch {
       // Network-level failure (offline, DNS, timeout) is not a rejected
       // password: surface it distinctly and leave the stored password and
@@ -161,6 +167,25 @@ export function AdminPanel({ locale }: { locale: Locale }) {
     await load(password)
   }
 
+  async function deleteRound(code: string) {
+    if (!password) return
+    setConfirmingDelete(null)
+    try {
+      const response = await fetch(`/api/rounds/${code}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-password': password },
+      })
+      if (!response.ok) {
+        setNetworkError(dict.couldNotDeleteRound)
+        return
+      }
+    } catch {
+      setNetworkError(NETWORK_ERROR_MESSAGE)
+      return
+    }
+    await load(password)
+  }
+
   const parsedNewChallengePoints = parsePoints(newChallengePoints)
 
   if (!password) {
@@ -203,6 +228,7 @@ export function AdminPanel({ locale }: { locale: Locale }) {
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '34px 40px' }}>
+      <BackLink locale={locale} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <h1 style={{ fontFamily: 'var(--serif)', fontSize: 40, margin: '0 0 6px' }}>{dict.gamesAndPlayers}</h1>
         <LanguageToggle locale={locale} />
@@ -428,6 +454,70 @@ export function AdminPanel({ locale }: { locale: Locale }) {
           </form>
         </div>
       </div>
+
+      <section style={{ marginTop: 48 }}>
+        <h2 style={{ fontFamily: 'var(--serif)', fontSize: 28, margin: '0 0 10px' }}>{dict.roundsHeading}</h2>
+
+        {rounds.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 15 }}>{dict.noRoundsYet}</div>}
+
+        {rounds.map((round) => (
+          <div
+            key={round.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              minHeight: 62,
+              borderBottom: '1px solid var(--rule)',
+            }}
+          >
+            <div style={{ flexGrow: 1, fontSize: 17, fontWeight: 500 }}>{round.name}</div>
+            <div style={{ fontSize: 15, color: 'var(--muted)' }}>{formatDate(round.playedOn, locale)}</div>
+            <div style={{ fontSize: 15, color: 'var(--muted)' }}>
+              {round.status === 'open' ? dict.inPlay : dict.finishedSuffix}
+            </div>
+            <div style={{ fontSize: 13, letterSpacing: 1.1, color: 'var(--muted)' }}>{round.code}</div>
+
+            {confirmingDelete === round.code ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 14 }}>{dict.confirmDeleteRound(round.name)}</span>
+                <Button
+                  onClick={() => void deleteRound(round.code)}
+                  style={{ height: 44, padding: '0 14px', fontSize: 14 }}
+                >
+                  {dict.yesDeleteRound}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setConfirmingDelete(null)}
+                  style={{ height: 44, padding: '0 14px', fontSize: 14 }}
+                >
+                  {dict.cancel}
+                </Button>
+              </div>
+            ) : (
+              // Deleting a round destroys its results for good, so it takes a
+              // deliberate second tap — same shape as finishing a round.
+              <button
+                onClick={() => setConfirmingDelete(round.code)}
+                style={{
+                  height: 44,
+                  padding: '0 14px',
+                  borderRadius: 6,
+                  border: '1.5px solid var(--rule)',
+                  background: 'transparent',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--sans)',
+                  fontSize: 14,
+                }}
+              >
+                {dict.deleteRound}
+              </button>
+            )}
+          </div>
+        ))}
+      </section>
     </div>
   )
 }

@@ -260,6 +260,35 @@ export async function finishRound(rawCode: string): Promise<RoundState> {
   return { ...state, status: 'finished' }
 }
 
+/**
+ * Deletes a round and everything hanging off it (players, games, results all
+ * cascade). Admin-only — this is the one operation that destroys history.
+ *
+ * A finished round is sealed by a trigger that refuses every write to
+ * `results`, and the cascade from `rounds` is such a write, so the round is
+ * reopened for the length of the delete. If the delete then fails, the
+ * finished status is put back rather than leaving a sealed round unsealed.
+ */
+export async function deleteRound(rawCode: string): Promise<void> {
+  const state = await getRoundState(rawCode)
+  if (!state) throw new RoundError('not_found', 'round not found')
+
+  const db = serviceDb()
+
+  if (state.status === 'finished') {
+    const { error } = await db.from('rounds').update({ status: 'open' }).eq('id', state.id)
+    if (error) throw new RoundError('bad_request', error.message)
+  }
+
+  const { error } = await db.from('rounds').delete().eq('id', state.id)
+  if (error) {
+    if (state.status === 'finished') {
+      await db.from('rounds').update({ status: 'finished' }).eq('id', state.id)
+    }
+    throw new RoundError('bad_request', error.message)
+  }
+}
+
 export async function listRounds(limit = 25): Promise<RoundSummary[]> {
   const db = serviceDb()
   const { data: rounds, error } = await db

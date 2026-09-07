@@ -15,6 +15,8 @@ const en = {
   played: 'Played',
   noRoundsYet: 'No rounds yet.',
   inPlay: 'In play',
+  admin: 'Admin',
+  backToRounds: 'All rounds',
 
   whereLabel: 'Where',
   flightLabel: 'Flight',
@@ -67,6 +69,14 @@ const en = {
   allowTiesLabel: 'Allow ties',
   addGame: 'Add game',
 
+  roundsHeading: 'Rounds',
+  deleteRound: 'Delete',
+  confirmDeleteRound: (roundName: string) =>
+    `Delete “${roundName}” for good? Its results cannot be recovered.`,
+  yesDeleteRound: 'Yes, delete',
+  cancel: 'Cancel',
+  couldNotDeleteRound: 'Could not delete that round. Try again.',
+
   switchLanguage: 'Switch language',
 }
 
@@ -79,6 +89,8 @@ const de: Dict = {
   played: 'Gespielt',
   noRoundsYet: 'Noch keine Runden.',
   inPlay: 'Läuft',
+  admin: 'Admin',
+  backToRounds: 'Alle Runden',
 
   whereLabel: 'Wo',
   flightLabel: 'Flight',
@@ -130,6 +142,14 @@ const de: Dict = {
   perRoundOption: 'Pro Runde',
   allowTiesLabel: 'Gleichstände erlauben',
   addGame: 'Spiel hinzufügen',
+
+  roundsHeading: 'Runden',
+  deleteRound: 'Löschen',
+  confirmDeleteRound: (roundName: string) =>
+    `«${roundName}» endgültig löschen? Die Resultate sind danach weg.`,
+  yesDeleteRound: 'Ja, löschen',
+  cancel: 'Abbrechen',
+  couldNotDeleteRound: 'Runde konnte nicht gelöscht werden. Nochmals versuchen.',
 
   switchLanguage: 'Sprache wechseln',
 }

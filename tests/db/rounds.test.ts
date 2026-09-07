@@ -7,6 +7,7 @@ import {
   listRounds,
   submitResult,
   finishRound,
+  deleteRound,
   RoundError,
 } from '@/server/rounds'
 
@@ -188,4 +189,34 @@ describe('rounds', () => {
     expect(rounds[0].code).toBe(code)
     expect(rounds[0].standings.find((s) => s.playerId === saemi.id)?.points).toBe(3)
   })
+  it('deletes a round and everything hanging off it', async () => {
+    const { code, ntp, domi, res } = await fixture()
+    const state = await getRoundState(code)
+    await submitResult(code, {
+      roundChallengeId: state!.challenges.find((c) => c.name === ntp.name)!.id,
+      hole: 3,
+      placements: [[domi.id], [res.id]],
+    })
+
+    await deleteRound(code)
+
+    expect(await getRoundState(code)).toBeNull()
+    const db = serviceClient()
+    const { data: leftovers } = await db.from('results').select('id').eq('round_id', state!.id)
+    expect(leftovers).toEqual([])
+  })
+
+  it('deletes a finished round even though its results are sealed', async () => {
+    const { code } = await fixture()
+    await finishRound(code)
+
+    await deleteRound(code)
+
+    expect(await getRoundState(code)).toBeNull()
+  })
+
+  it('refuses to delete an unknown code', async () => {
+    await expect(deleteRound('ZZZZZZZZZZ')).rejects.toBeInstanceOf(RoundError)
+  })
+
 })

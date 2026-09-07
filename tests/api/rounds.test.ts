@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { resetDatabase } from '../helpers/db'
 import { createChallenge, createPlayer } from '@/server/catalog'
 import { createRound, getRoundState } from '@/server/rounds'
-import { GET as getRound } from '@/app/api/rounds/[code]/route'
+import { GET as getRound, DELETE as deleteRoundRoute } from '@/app/api/rounds/[code]/route'
 import { POST as postResult } from '@/app/api/rounds/[code]/results/route'
 import { POST as postFinish } from '@/app/api/rounds/[code]/finish/route'
 
@@ -28,8 +28,16 @@ async function fixture() {
 
 const ctx = (code: string) => ({ params: Promise.resolve({ code }) })
 
+const PASSWORD = 'house-password'
+
 describe('round API', () => {
-  beforeEach(resetDatabase)
+  beforeEach(async () => {
+    // Deleting a round is admin-only, so these tests pin both the password
+    // and the open-admin switch rather than inheriting whatever .env.local has.
+    process.env.ADMIN_PASSWORD = PASSWORD
+    delete process.env.ADMIN_OPEN
+    await resetDatabase()
+  })
 
   it('returns the round state for a valid code', async () => {
     const { code } = await fixture()
@@ -113,4 +121,24 @@ describe('round API', () => {
     )
     expect(response.status).toBe(409)
   })
+  it('refuses to delete a round without the admin password', async () => {
+    const { code } = await fixture()
+    const response = await deleteRoundRoute(new Request('http://test/', { method: 'DELETE' }), ctx(code))
+    expect(response.status).toBe(401)
+    expect(await getRoundState(code)).not.toBeNull()
+  })
+
+  it('deletes a round for an admin', async () => {
+    const { code } = await fixture()
+    const response = await deleteRoundRoute(
+      new Request('http://test/', {
+        method: 'DELETE',
+        headers: { 'x-admin-password': PASSWORD },
+      }),
+      ctx(code),
+    )
+    expect(response.status).toBe(204)
+    expect(await getRoundState(code)).toBeNull()
+  })
+
 })

@@ -19,6 +19,7 @@ describe('i18n dictionary', () => {
     saveChallenge: ['Nächstes Loch'],
     tiesNotAllowed: ['Nächstes Loch'],
     invalidPoints: ['abc, xyz'],
+    confirmDeleteRound: ['Breitenloo'],
   }
 
   it('never spells a German string with ß (Swiss German uses ss), including templated ones', () => {

@@ -6,32 +6,46 @@ import { AdminPanel } from '@/app/admin/AdminPanel'
 // refresh the page after switching locales; jsdom has no app router mounted.
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: () => {} }) }))
 
+const PLAYERS = [{ id: 'p1', name: 'Domi', archived: false }]
+
+const CHALLENGES = [
+  {
+    id: 'c1',
+    name: 'Nearest to the pin',
+    description: '',
+    points: [3, 2, 1],
+    scope: 'per_hole',
+    allowTies: false,
+    archived: false,
+  },
+]
+
+const ROUNDS = [
+  {
+    id: 'r1',
+    code: 'K7QFM2XT9R',
+    name: 'Breitenloo',
+    playedOn: '2026-09-12',
+    status: 'open',
+    players: PLAYERS,
+    standings: [{ playerId: 'p1', points: 3 }],
+  },
+]
+
+/** What each admin endpoint answers; the panel loads all three on unlock. */
+function bodyFor(url: string): unknown {
+  if (url.includes('players')) return PLAYERS
+  if (url.includes('challenges')) return CHALLENGES
+  return ROUNDS
+}
+
 describe('AdminPanel', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string) =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify(
-              String(url).includes('players')
-                ? [{ id: 'p1', name: 'Domi', archived: false }]
-                : [
-                    {
-                      id: 'c1',
-                      name: 'Nearest to the pin',
-                      description: '',
-                      points: [3, 2, 1],
-                      scope: 'per_hole',
-                      allowTies: false,
-                      archived: false,
-                    },
-                  ],
-            ),
-            { status: 200 },
-          ),
-        ),
+        Promise.resolve(new Response(JSON.stringify(bodyFor(String(url))), { status: 200 })),
       ),
     )
   })
@@ -173,6 +187,54 @@ describe('AdminPanel', () => {
     await screen.findByText(/network/i)
     expect(window.localStorage.getItem('golf-admin-password')).toBe('secret')
   })
+  it('lists the rounds and deletes one after a confirmation tap', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Breitenloo')
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+
+    // The first tap only arms the confirmation — nothing is sent yet.
+    expect(fetch).not.toHaveBeenCalledWith(
+      '/api/rounds/K7QFM2XT9R',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /yes, delete/i }))
+
+    await vi.waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/rounds/K7QFM2XT9R',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: { 'x-admin-password': 'secret' },
+        }),
+      ),
+    )
+  })
+
+  it('keeps the round when the confirmation is cancelled', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    await screen.findByText('Breitenloo')
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /cancel/i }))
+
+    expect(screen.getByText('Breitenloo')).toBeDefined()
+    expect(fetch).not.toHaveBeenCalledWith(
+      '/api/rounds/K7QFM2XT9R',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+  })
+
+  it('links back to the rounds list', async () => {
+    window.localStorage.setItem('golf-admin-password', 'secret')
+    render(<AdminPanel locale="en" />)
+
+    const back = await screen.findByRole('link', { name: /all rounds/i })
+    expect(back.getAttribute('href')).toBe('/')
+  })
 })
 
 describe('AdminPanel in German', () => {
@@ -181,26 +243,7 @@ describe('AdminPanel in German', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string) =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify(
-              String(url).includes('players')
-                ? [{ id: 'p1', name: 'Domi', archived: false }]
-                : [
-                    {
-                      id: 'c1',
-                      name: 'Nearest to the pin',
-                      description: '',
-                      points: [3, 2, 1],
-                      scope: 'per_hole',
-                      allowTies: false,
-                      archived: false,
-                    },
-                  ],
-            ),
-            { status: 200 },
-          ),
-        ),
+        Promise.resolve(new Response(JSON.stringify(bodyFor(String(url))), { status: 200 })),
       ),
     )
   })

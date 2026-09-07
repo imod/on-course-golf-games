@@ -311,4 +311,13 @@ describe('LiveRound in German', () => {
     fireEvent.click(screen.getByTestId('cell-c1-p1'))
     expect(screen.getByTestId('save-c1').textContent).toMatch(/speichern/i)
   })
+  it('links back to the rounds list, open or finished', () => {
+    const { unmount } = render(<LiveRound initial={initial} locale="en" />)
+    expect(screen.getByRole('link', { name: /all rounds/i }).getAttribute('href')).toBe('/')
+    unmount()
+
+    render(<LiveRound initial={{ ...initial, status: 'finished' }} locale="en" />)
+    expect(screen.getByRole('link', { name: /all rounds/i }).getAttribute('href')).toBe('/')
+  })
+
 })
